@@ -77,7 +77,7 @@ cat > "${CONTENTS_DIR}/Info.plist" <<PLIST
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>© $(date +%Y) Bitmoor Ltd</string>
+    <string>© $(date +%Y) Darryl Morley</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>
