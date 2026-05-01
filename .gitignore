@@ -7,3 +7,10 @@ dist/
 .DS_Store
 .env
 .claude/
+
+# Local planning / design / scratch docs (kept uncommitted by convention)
+planning/
+
+# Release notes are staged here, then copied into the homebrew-whatcable tap
+# repo and used as the GitHub release body. The tap repo is the canonical home.
+release-notes/
