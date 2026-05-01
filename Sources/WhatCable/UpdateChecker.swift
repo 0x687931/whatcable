@@ -6,6 +6,7 @@ import os.log
 struct AvailableUpdate: Equatable {
     let version: String
     let url: URL
+    let downloadURL: URL?
     let notes: String?
 }
 
@@ -68,9 +69,13 @@ final class UpdateChecker: ObservableObject {
 
                 let remote = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
                 let notes = json["body"] as? String
+                let downloadURL = (json["assets"] as? [[String: Any]])?
+                    .first(where: { ($0["name"] as? String)?.hasSuffix(".zip") == true })
+                    .flatMap { $0["browser_download_url"] as? String }
+                    .flatMap { URL(string: $0) }
 
                 if Self.isNewer(remote: remote, current: AppInfo.version) {
-                    let update = AvailableUpdate(version: remote, url: url, notes: notes)
+                    let update = AvailableUpdate(version: remote, url: url, downloadURL: downloadURL, notes: notes)
                     self.available = update
                     if self.notifiedVersion != remote {
                         self.notifiedVersion = remote
@@ -100,11 +105,20 @@ final class UpdateChecker: ObservableObject {
     }
 
     private func showAlert(title: String, message: String) {
+        // LSUIElement apps can't reliably bring a modal alert to the front.
+        // Briefly promote to a regular app so the alert takes focus, then
+        // restore accessory policy after dismissal.
+        let originalPolicy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
+        alert.window.level = .floating
         alert.runModal()
+
+        NSApp.setActivationPolicy(originalPolicy)
     }
 
     /// Compare dot-separated numeric versions. Non-numeric segments compare lexically.

@@ -6,3 +6,4 @@ dist/
 *.xcodeproj
 .DS_Store
 .env
+.claude/
