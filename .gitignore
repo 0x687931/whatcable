@@ -5,3 +5,4 @@ build/
 dist/
 *.xcodeproj
 .DS_Store
+.env

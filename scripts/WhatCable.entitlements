@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- WhatCable reads IOKit registry properties only. No special entitlements
+         are required for that, but the hardened runtime is mandatory for
+         notarisation, so this file exists to be passed via --entitlements. -->
+</dict>
+</plist>

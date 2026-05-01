@@ -31,7 +31,32 @@ Requires macOS 14+ and Swift 5.9 (Xcode 15+).
 ./scripts/build-app.sh
 ```
 
-This produces `dist/WhatCable.app` (release build, ad-hoc signed) and `dist/WhatCable.zip` ready for distribution.
+This produces a universal `dist/WhatCable.app` (arm64 + x86_64) and `dist/WhatCable.zip`.
+
+**Modes:**
+
+| Configuration | Result |
+| --- | --- |
+| No `.env` | Ad-hoc signed. Works locally; Gatekeeper warns on other Macs. |
+| `.env` with `DEVELOPER_ID` | Developer ID signed + hardened runtime. Suitable for limited distribution. |
+| `.env` with `DEVELOPER_ID` + `NOTARY_PROFILE` | Full notarisation + stapled ticket. Gatekeeper-clean for everyone. |
+
+**One-time setup for full notarisation:**
+
+```bash
+# Find your signing identity
+security find-identity -v -p codesigning
+
+# Store notarytool credentials in the keychain
+xcrun notarytool store-credentials "WhatCable-notary" \
+    --apple-id "you@example.com" \
+    --team-id "ABCDE12345" \
+    --password "<app-specific-password>"   # from appleid.apple.com
+
+# Then create .env from the template
+cp .env.example .env
+# ...and fill in DEVELOPER_ID
+```
 
 To install locally:
 
