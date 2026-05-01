@@ -44,6 +44,36 @@ The app is universal (Apple silicon + Intel), signed with a Developer ID, and no
 
 Requires macOS 14 (Sonoma) or later.
 
+### Homebrew
+
+```bash
+brew tap darrylmorley/whatcable
+brew install --cask whatcable
+```
+
+This installs the menu bar app and symlinks the `whatcable` CLI into your PATH.
+
+## Command-line interface
+
+A `whatcable` binary ships alongside the menu bar app, driven by the same diagnostic engine:
+
+```bash
+whatcable                # human-readable summary of every port
+whatcable --json         # structured JSON, pipe into jq
+whatcable --watch        # stream updates as cables come and go (Ctrl+C to exit)
+whatcable --raw          # include underlying IOKit properties
+whatcable --version
+whatcable --help
+```
+
+If you installed the `.app` manually rather than via Homebrew, the CLI lives at `WhatCable.app/Contents/MacOS/whatcable`. Symlink it into your PATH if you want it on the shell:
+
+```bash
+ln -s /Applications/WhatCable.app/Contents/MacOS/whatcable /usr/local/bin/whatcable
+```
+
+The Homebrew install does this for you automatically.
+
 ## How it works
 
 WhatCable reads three families of IOKit services. No entitlements, no private APIs, no helper daemons:
@@ -59,7 +89,8 @@ Cable speed and power decoding follow the USB Power Delivery 3.x spec.
 ## Build from source
 
 ```bash
-swift run WhatCable
+swift run WhatCable          # menu bar app
+swift run whatcable-cli      # CLI
 ```
 
 Requires Swift 5.9 (Xcode 15+).

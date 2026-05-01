@@ -19,9 +19,11 @@ fi
 
 APP_NAME="WhatCable"
 BUNDLE_ID="com.bitmoor.whatcable"
-VERSION="0.4.7"
-BUILD_NUMBER="13"
+VERSION="0.5.0"
+BUILD_NUMBER="14"
 MIN_OS="14.0"
+CLI_PRODUCT="whatcable-cli"
+CLI_BIN_NAME="whatcable"
 
 DEVELOPER_ID="${DEVELOPER_ID:-}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
@@ -40,16 +42,20 @@ echo "==> Cleaning previous build"
 rm -rf "${DIST_DIR}"
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 
-echo "==> Building universal release binary (arm64 + x86_64)"
+echo "==> Building universal release binaries (arm64 + x86_64)"
 swift build -c release --product "${APP_NAME}" \
+    --arch arm64 --arch x86_64
+swift build -c release --product "${CLI_PRODUCT}" \
     --arch arm64 --arch x86_64
 
 BIN_PATH=$(swift build -c release --product "${APP_NAME}" \
     --arch arm64 --arch x86_64 --show-bin-path)
 cp "${BIN_PATH}/${APP_NAME}" "${MACOS_DIR}/${APP_NAME}"
+cp "${BIN_PATH}/${CLI_PRODUCT}" "${MACOS_DIR}/${CLI_BIN_NAME}"
 
-echo "==> Verifying universal binary"
-lipo -archs "${MACOS_DIR}/${APP_NAME}" | sed 's/^/    /'
+echo "==> Verifying universal binaries"
+lipo -archs "${MACOS_DIR}/${APP_NAME}" | sed 's/^/    app: /'
+lipo -archs "${MACOS_DIR}/${CLI_BIN_NAME}" | sed 's/^/    cli: /'
 
 echo "==> Copying app icon"
 if [[ ! -f "scripts/AppIcon.icns" ]]; then
@@ -99,7 +105,12 @@ PLIST
 printf "APPL????" > "${CONTENTS_DIR}/PkgInfo"
 
 if [[ -n "${DEVELOPER_ID}" ]]; then
-    echo "==> Signing with Developer ID + hardened runtime"
+    echo "==> Signing CLI binary (inner) with Developer ID + hardened runtime"
+    codesign --force --options runtime --timestamp \
+        --sign "${DEVELOPER_ID}" \
+        "${MACOS_DIR}/${CLI_BIN_NAME}"
+
+    echo "==> Signing app bundle (outer) with Developer ID + hardened runtime"
     echo "    Identity: ${DEVELOPER_ID}"
     codesign --force --options runtime --timestamp \
         --entitlements "${ENTITLEMENTS}" \
@@ -137,7 +148,14 @@ elif [[ -n "${DEVELOPER_ID}" ]]; then
     echo "      xcrun notarytool store-credentials \"WhatCable-notary\" --apple-id ... --team-id ... --password ..."
 fi
 
+if [[ -x "scripts/bump-cask.sh" ]]; then
+    echo "==> Bumping Homebrew cask (no-op unless TAP_DIR is set)"
+    ./scripts/bump-cask.sh "${VERSION}" "${DIST_DIR}/${APP_NAME}.zip" || \
+        echo "    cask bump failed (non-fatal)"
+fi
+
 echo
 echo "Done."
 echo "  App:  ${APP_DIR}"
+echo "  CLI:  ${MACOS_DIR}/${CLI_BIN_NAME} (inside the bundle)"
 echo "  Zip:  ${DIST_DIR}/${APP_NAME}.zip"
