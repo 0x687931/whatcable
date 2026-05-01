@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WhatCable. Iconography</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./colors_and_type.css">
+<style>
+  :root { --font: "Geist", -apple-system, system-ui, sans-serif; }
+  body {
+    margin: 0; padding: 28px 32px;
+    background: #fff;
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .title {
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--fg-tertiary);
+    margin-bottom: 8px;
+  }
+  .principle {
+    font-size: 14px;
+    color: var(--fg-secondary);
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    margin-bottom: 28px;
+    max-width: 560px;
+  }
+  .principle strong { color: var(--fg-primary); font-weight: 500; }
+
+  .section-label {
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--fg-tertiary);
+    margin: 24px 0 14px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: rgba(0,0,0,0.06);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .cell {
+    background: #fff;
+    padding: 22px 16px 18px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+  }
+  .cell svg { width: 28px; height: 28px; color: var(--fg-primary); display: block; }
+  .cell .nm {
+    font-size: 12px; font-weight: 500;
+    color: var(--fg-primary);
+    letter-spacing: -0.005em;
+  }
+  .cell .role {
+    font-size: 11px;
+    color: var(--fg-tertiary);
+    letter-spacing: -0.005em;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .swatch-bolt-ok   { color: #34C759; }
+  .swatch-bolt-warn { color: #FF9500; }
+  .swatch-bolt-bad  { color: #FF3B30; }
+</style>
+</head>
+<body>
+
+  <div class="title">Iconography</div>
+  <div class="principle">
+    <strong>Six icons. No more.</strong> Each one means a single thing in the product. Drawn at 24px on a 1.5px stroke. Lucide for utility glyphs, the official USB-IF trident for data.
+  </div>
+
+  <div class="section-label">Status. bolt, color carries meaning</div>
+  <div class="grid">
+    <div class="cell">
+      <svg class="swatch-bolt-ok" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6.5l-1 8 9.5-12h-6.5l1-8z"/></svg>
+      <div class="nm">Charging well</div>
+      <div class="role">Green</div>
+    </div>
+    <div class="cell">
+      <svg class="swatch-bolt-warn" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6.5l-1 8 9.5-12h-6.5l1-8z"/></svg>
+      <div class="nm">Cable limited</div>
+      <div class="role">Orange</div>
+    </div>
+    <div class="cell">
+      <svg class="swatch-bolt-bad" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6.5l-1 8 9.5-12h-6.5l1-8z"/></svg>
+      <div class="nm">Bad cable</div>
+      <div class="role">Red</div>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 3v6M15 3v6"/><path d="M5 9h14v3a7 7 0 0 1-14 0z"/><path d="M12 16v5"/>
+      </svg>
+      <div class="nm">Empty</div>
+      <div class="role">Tertiary gray</div>
+    </div>
+  </div>
+
+  <div class="section-label">Function</div>
+  <div class="grid">
+    <div class="cell">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="20" r="1.6" fill="currentColor"/>
+        <path d="M12 20 V6"/>
+        <path d="M12 6 9.5 9 M12 6 14.5 9" />
+        <path d="M12 12 7 14 V17" />
+        <rect x="5.5" y="14" width="3" height="3" fill="currentColor" stroke="none"/>
+        <path d="M12 14 17 11 V8.5" />
+        <circle cx="17" cy="7" r="1.4" fill="currentColor"/>
+      </svg>
+      <div class="nm">Data</div>
+      <div class="role">USB-IF trident</div>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 21h6M12 16v5"/>
+      </svg>
+      <div class="nm">Display</div>
+      <div class="role">Lucide monitor</div>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>
+      </svg>
+      <div class="nm">Refresh</div>
+      <div class="role">Lucide rotate-cw</div>
+    </div>
+    <div class="cell">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+      </svg>
+      <div class="nm">Settings</div>
+      <div class="role">Lucide settings</div>
+    </div>
+  </div>
+
+</body>
+</html>

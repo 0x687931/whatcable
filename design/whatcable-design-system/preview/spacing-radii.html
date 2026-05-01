@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WhatCable. Spacing & radii</title>
+<link rel="stylesheet" href="./colors_and_type.css">
+<style>
+  body { margin: 0; padding: 14px 18px; background: #fff; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  h5 { margin: 0 0 8px; font-size: 10px; color: var(--fg-secondary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .scale { display: flex; gap: 8px; align-items: flex-end; }
+  .step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar { background: var(--tint-blue); border-radius: 2px; opacity: 0.85; }
+  .num { font-size: 9px; color: var(--fg-secondary); font-family: var(--font-mono); }
+  .radii { display: flex; gap: 14px; }
+  .rd { width: 56px; height: 44px; background: var(--bg-card); display: grid; place-items: end center; padding-bottom: 4px; font-size: 9px; color: var(--fg-secondary); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div>
+      <h5>Spacing scale (4px base)</h5>
+      <div class="scale">
+        <div class="step"><div class="bar" style="width:14px;height:2px"></div><div class="num">2</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:4px"></div><div class="num">4</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:6px"></div><div class="num">6</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:8px"></div><div class="num">8</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:10px"></div><div class="num">10</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:12px"></div><div class="num">12</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:14px"></div><div class="num">14</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:18px"></div><div class="num">18</div></div>
+        <div class="step"><div class="bar" style="width:14px;height:32px"></div><div class="num">32</div></div>
+      </div>
+    </div>
+    <div>
+      <h5>Corner radii. only two</h5>
+      <div class="radii">
+        <div class="rd" style="border-radius:10px">10 card</div>
+        <div class="rd" style="border-radius:8px">8 pill</div>
+        <div class="rd" style="border-radius:5px">5 chip</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

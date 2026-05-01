@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WhatCable. Voice & copy</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./colors_and_type.css">
+<style>
+  :root { --font: "Geist", -apple-system, system-ui, sans-serif; }
+  body {
+    margin: 0; padding: 28px 32px;
+    background: #fff;
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .principle {
+    font-size: 16px;
+    color: var(--fg-primary);
+    letter-spacing: -0.01em;
+    line-height: 1.45;
+    margin-bottom: 24px;
+    max-width: 560px;
+  }
+  .principle strong { font-weight: 600; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+  .col-label {
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--fg-tertiary);
+    margin-bottom: 14px;
+  }
+  .quote {
+    font-size: 14px;
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+    padding: 10px 0;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    color: var(--fg-primary);
+  }
+  .quote:first-of-type { border-top: 0; }
+  .col.no .quote { color: var(--fg-tertiary); }
+</style>
+</head>
+<body>
+
+  <div class="principle">
+    <strong>Plain English. No jargon, no exclamation marks.</strong> Tell people what's happening and what it means for them. Write like a knowledgeable friend, not a spec sheet.
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <div class="col-label">Do</div>
+      <div class="quote">Charging well at 30 W</div>
+      <div class="quote">This cable can't go faster than 60 W</div>
+      <div class="quote">Plug a cable in to see what it can do</div>
+      <div class="quote">Cable connected upside down. that's fine</div>
+      <div class="quote">Your charger could go up to 45 W. Your laptop isn't asking for it.</div>
+    </div>
+    <div class="col no">
+      <div class="col-label">Don't</div>
+      <div class="quote">⚡ Smart charging detected!</div>
+      <div class="quote">Cable performance is suboptimal</div>
+      <div class="quote">Connect a USB-C Cable to Begin</div>
+      <div class="quote">Oops! We couldn't read your cable.</div>
+      <div class="quote">PDO 4 active: 20V @ 1.5A negotiated via PD 3.1</div>
+    </div>
+  </div>
+
+</body>
+</html>

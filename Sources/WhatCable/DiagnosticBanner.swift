@@ -6,15 +6,17 @@ struct DiagnosticBanner: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: diagnostic.icon)
-                .foregroundStyle(diagnostic.isWarning ? Color.orange : Color.green)
-                .font(.callout)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+                .background(diagnostic.isWarning ? Color.orange : Color.green, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
-                Text(diagnostic.summary).font(.callout).bold()
+                Text(diagnostic.summary).font(.system(size: 12, weight: .semibold))
                 Text(diagnostic.detail).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
         }
-        .padding(10)
+        .padding(12)
         .background(
             (diagnostic.isWarning ? Color.orange : Color.green)
                 .opacity(0.1),

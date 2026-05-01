@@ -6,21 +6,23 @@ struct UpdateBanner: View {
     @ObservedObject private var installer = Installer.shared
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "arrow.down.circle.fill")
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("WhatCable \(update.version) is available")
-                    .font(.callout).bold()
-                statusLine
-                    .font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.down.circle.fill")
+                    .foregroundStyle(.tint)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("WhatCable \(update.version) is available")
+                        .font(.system(size: 12, weight: .semibold))
+                    statusLine
+                        .font(.system(size: 10)).foregroundStyle(.secondary)
+                }
+                Spacer()
             }
-            Spacer()
             actionButtons
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.12))
+        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
     }
 
     @ViewBuilder
@@ -58,6 +60,7 @@ struct UpdateBanner: View {
                     .controlSize(.small)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         case .downloading, .verifying, .installing:
             ProgressView().controlSize(.small)
         }

@@ -29,8 +29,9 @@ struct ContentView: View {
             header
             if let update = updates.available {
                 UpdateBanner(update: update)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
             }
-            Divider()
             let visiblePorts = settings.hideEmptyPorts
                 ? cableStore.ports.filter { $0.connectionActive == true }
                 : cableStore.ports
@@ -39,36 +40,68 @@ struct ContentView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
-                        ForEach(visiblePorts) { port in
-                            PortCard(
-                                port: port,
-                                powerSources: cableStore.sources(for: port),
-                                identities: cableStore.identities(for: port),
-                                showAdvanced: showAdvanced
+                        let warningItems = visiblePorts.compactMap { port -> PortWarningItem? in
+                            let sources = cableStore.sources(for: port)
+                            let identities = cableStore.identities(for: port)
+                            guard let diagnostic = ChargingDiagnostic(port: port, sources: sources, identities: identities),
+                                  diagnostic.isWarning else {
+                                return nil
+                            }
+                            return PortWarningItem(
+                                id: port.id,
+                                portName: port.portDescription ?? port.serviceName,
+                                diagnostic: diagnostic
                             )
                         }
+                        ForEach(warningItems) { item in
+                            PortWarningBanner(item: item)
+                        }
+
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: 8),
+                                GridItem(.flexible(), spacing: 8)
+                            ],
+                            spacing: 8
+                        ) {
+                            ForEach(visiblePorts) { port in
+                                PortCard(
+                                    port: port,
+                                    powerSources: cableStore.sources(for: port),
+                                    identities: cableStore.identities(for: port)
+                                )
+                            }
+                        }
+
                         if !cableStore.devices.isEmpty {
                             USBDeviceList(devices: cableStore.devices)
                         }
+
+                        if showAdvanced {
+                            ForEach(visiblePorts) { port in
+                                PortDetailsSection(
+                                    port: port,
+                                    powerSources: cableStore.sources(for: port),
+                                    identities: cableStore.identities(for: port)
+                                )
+                            }
+                        }
                     }
-                    .padding(12)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
                 }
             }
-            Divider()
-            footer
         }
+        .background(.regularMaterial)
     }
 
     private var header: some View {
         HStack {
-            Image(systemName: "cable.connector.horizontal")
-                .font(.title2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AppInfo.name).font(.headline)
-                Text(AppInfo.tagline)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(AppInfo.name.uppercased())
+                .font(.system(size: 10, weight: .medium))
+                .tracking(1.6)
+                .foregroundStyle(.tertiary)
             Spacer()
             Button {
                 refresh.bump()
@@ -85,36 +118,23 @@ struct ContentView: View {
             .buttonStyle(.borderless)
             .help("Settings")
         }
-        .padding(12)
-    }
-
-    private var footer: some View {
-        HStack {
-            Spacer()
-            Text("\(cableStore.devices.count) USB device\(cableStore.devices.count == 1 ? "" : "s")")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text("·").font(.caption).foregroundStyle(.secondary)
-            Text("v\(AppInfo.version) · \(AppInfo.credit)")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.top, 16)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
     }
 
     private var emptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: "powerplug")
-                .font(.system(size: 40))
-                .foregroundStyle(.secondary)
-            Text("No USB-C ports detected")
-                .font(.headline)
-            Text("This Mac doesn't seem to expose its port-controller services. Hit refresh, or check System Information → USB.")
+                .font(.system(size: 24))
+                .foregroundStyle(.tertiary)
+            Text("No USB-C ports")
+                .font(.system(size: 22, weight: .medium))
+            Text("Plug a cable in to see what it can do.")
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 24)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

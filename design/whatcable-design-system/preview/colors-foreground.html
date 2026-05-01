@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WhatCable. Foreground hierarchy</title>
+<link rel="stylesheet" href="./colors_and_type.css">
+<style>
+  body { margin: 0; padding: 18px 20px; background: #fff; }
+  .stack { display: grid; grid-template-columns: 200px 1fr 130px; gap: 14px 18px; align-items: center; }
+  .label { font-size: 11px; color: var(--fg-secondary); font-family: var(--font-mono); }
+  .demo  { font-size: 13px; }
+  .hex   { font-size: 10px; color: var(--fg-tertiary); font-family: var(--font-mono); text-align: right; }
+  h4 { margin: 0 0 14px; font-size: 11px; color: var(--fg-secondary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h4>Foreground / label hierarchy</h4>
+  <div class="stack">
+    <div class="label">.primary / fg-primary</div>
+    <div class="demo" style="color: var(--fg-primary)">Charging well at 30W</div>
+    <div class="hex">black 85%</div>
+
+    <div class="label">.secondary / fg-secondary</div>
+    <div class="demo" style="color: var(--fg-secondary)">Charger and cable are well-matched.</div>
+    <div class="hex">labelGray 60%</div>
+
+    <div class="label">.tertiary / fg-tertiary</div>
+    <div class="demo" style="color: var(--fg-tertiary)">v0.2.0 · Bitmoor Ltd</div>
+    <div class="hex">labelGray 30%</div>
+
+    <div class="label">.quaternary / bg-card</div>
+    <div class="demo"><span style="background: var(--bg-card); padding: 4px 8px; border-radius: 6px;">Port card fill</span></div>
+    <div class="hex">gray 8%</div>
+  </div>
+</body>
+</html>

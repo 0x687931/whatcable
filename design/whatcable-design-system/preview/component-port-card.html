@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WhatCable. Port card</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./colors_and_type.css">
+<style>
+  :root { --font: "Geist", -apple-system, system-ui, sans-serif; }
+  body {
+    margin: 0; padding: 28px 32px;
+    background: #fff;
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .stack { display: flex; flex-direction: column; gap: 14px; max-width: 480px; }
+
+  .card {
+    background: rgba(0,0,0,0.02);
+    border: 1px solid rgba(0,0,0,0.06);
+    border-radius: 12px;
+    padding: 18px 18px;
+    display: flex; gap: 16px;
+    align-items: center;
+  }
+  .verdict-icon {
+    flex: 0 0 32px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: #fff;
+  }
+  .verdict-icon svg {
+    width: 18px; height: 18px;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    stroke: currentColor;
+  }
+  .v-good  { background: #34C759; }
+  .v-warn  { background: #FF9500; }
+  .v-bad   { background: #FF3B30; }
+
+  .meta {
+    font-size: 11px; font-weight: 500;
+    color: var(--fg-tertiary);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .h {
+    font-size: 16px; font-weight: 500;
+    color: var(--fg-primary);
+    letter-spacing: -0.01em;
+    margin-top: 4px;
+    line-height: 1.25;
+  }
+  .sub {
+    font-size: 13px;
+    color: var(--fg-secondary);
+    margin-top: 4px;
+    letter-spacing: -0.005em;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+  <div class="stack">
+
+    <div class="card">
+      <div class="verdict-icon v-good" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><polyline points="6 12 10 16 18 8"/></svg>
+      </div>
+      <div>
+        <div class="meta">MagSafe</div>
+        <div class="h">Charging at 30 W</div>
+        <div class="sub">Charger and cable are working well together.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="verdict-icon v-warn" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 5v8" stroke-width="3"/>
+          <circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div>
+        <div class="meta">Thunderbolt 4</div>
+        <div class="h">Cable limited to 60 W</div>
+        <div class="sub">Your charger could go faster. this cable can't carry it.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="verdict-icon v-bad" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+      </div>
+      <div>
+        <div class="meta">Thunderbolt 4</div>
+        <div class="h">Cable not negotiating</div>
+        <div class="sub">Try a different cable. This one isn't responding to the charger.</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

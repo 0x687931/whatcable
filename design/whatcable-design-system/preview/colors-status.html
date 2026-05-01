@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WhatCable. Status colors in use</title>
+<link rel="stylesheet" href="./colors_and_type.css">
+<style>
+  body { margin: 0; padding: 16px 18px; background: #fff; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg-card); border-radius: 8px; }
+  .ico { width: 28px; height: 28px; display: grid; place-items: center; }
+  .ico svg { width: 22px; height: 22px; }
+  .t1 { font-size: 13px; font-weight: 700; }
+  .t2 { font-size: 11px; color: var(--fg-secondary); }
+  h4 { margin: 0 0 12px; font-size: 11px; color: var(--fg-secondary); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+</style>
+</head>
+<body>
+  <h4>Status icon colors → meaning</h4>
+  <div class="grid">
+    <div class="row"><div class="ico" style="color: var(--tint-yellow)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></div><div><div class="t1">Charging</div><div class="t2">bolt.fill · yellow</div></div></div>
+    <div class="row"><div class="ico" style="color: var(--tint-blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12h12"/><circle cx="20" cy="12" r="2"/><rect x="2" y="9" width="3" height="6" rx="1"/></svg></div><div><div class="t1">USB device</div><div class="t2">cable.connector · blue</div></div></div>
+    <div class="row"><div class="ico" style="color: var(--tint-purple)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l8-6v4h10v4H11v4z"/></svg></div><div><div class="t1">Thunderbolt / USB4</div><div class="t2">bolt.horizontal.fill · purple</div></div></div>
+    <div class="row"><div class="ico" style="color: var(--tint-teal)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M9 21h6M12 17v4" stroke-linecap="round"/></svg></div><div><div class="t1">DisplayPort</div><div class="t2">display · teal</div></div></div>
+    <div class="row"><div class="ico" style="color: var(--fg-secondary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 3v6M15 3v6"/><path d="M5 9h14v3a7 7 0 0 1-14 0z"/><path d="M12 16v5"/></svg></div><div><div class="t1">Nothing connected</div><div class="t2">powerplug · secondary</div></div></div>
+    <div class="row"><div class="ico" style="color: var(--tint-orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 4M12 17.5v.01" stroke-linecap="round"/></svg></div><div><div class="t1">Unknown</div><div class="t2">questionmark.circle · orange</div></div></div>
+  </div>
+</body>
+</html>

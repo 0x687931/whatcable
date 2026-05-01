@@ -9,7 +9,10 @@ struct PowerSourceList: View {
                 if !source.options.isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(source.name) profiles")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.system(size: 10, weight: .medium))
+                            .tracking(0.6)
+                            .foregroundStyle(.tertiary)
+                            .textCase(.uppercase)
                         ForEach(source.options.sorted(by: { $0.voltageMV < $1.voltageMV }), id: \.self) { option in
                             PowerOptionRow(option: option, isActive: option == source.winning)
                         }
@@ -30,9 +33,9 @@ private struct PowerOptionRow: View {
                 .foregroundStyle(isActive ? Color.green : Color.secondary)
                 .font(.caption)
             Text("\(option.voltsLabel) @ \(option.ampsLabel) - \(option.wattsLabel)")
-                .font(.callout.monospacedDigit())
+                .font(.system(size: 12).monospacedDigit())
             if isActive {
-                Text("active").font(.caption2).foregroundStyle(.green)
+                Text("active").font(.system(size: 9, weight: .medium)).foregroundStyle(.green)
             }
             Spacer()
         }

@@ -74,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             let p = NSPopover()
             p.behavior = isPinned ? .applicationDefined : .transient
             p.animates = true
-            p.contentSize = NSSize(width: 760, height: 540)
+            p.contentSize = NSSize(width: 320, height: 520)
             p.contentViewController = NSHostingController(
                 rootView: ContentView().environmentObject(Self.refreshSignal)
             )
@@ -113,7 +113,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         let w = NSWindow(contentViewController: host)
         w.title = AppInfo.name
         w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        w.setContentSize(NSSize(width: 760, height: 540))
+        w.setContentSize(NSSize(width: 320, height: 520))
+        w.minSize = NSSize(width: 320, height: 420)
         w.center()
         w.delegate = self
         w.isReleasedWhenClosed = false

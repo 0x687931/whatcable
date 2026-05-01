@@ -1,0 +1,238 @@
+/* =============================================================
+   WhatCable Design Tokens
+   Mapped from SwiftUI semantic colors + SF Pro type ramp to CSS.
+   ============================================================= */
+
+:root {
+  /* -----------------------------------------------------------
+     COLOR — semantic, system-driven.
+     WhatCable uses macOS semantic colors; we approximate them
+     with values from Apple's HIG Color reference (light mode).
+     Dark mode overrides at the bottom.
+     ----------------------------------------------------------- */
+
+  /* Foreground / label hierarchy (SwiftUI .primary / .secondary / .tertiary / .quaternary) */
+  --fg-primary: rgb(0 0 0 / 0.85);            /* .primary    — body text */
+  --fg-secondary: rgb(60 60 67 / 0.60);       /* .secondary  — captions, descriptions */
+  --fg-tertiary: rgb(60 60 67 / 0.30);        /* .tertiary   — footer credit */
+  --fg-quaternary: rgb(60 60 67 / 0.18);      /* .quaternary — disabled glyphs */
+
+  /* Backgrounds */
+  --bg-window: #ECECEC;                       /* NSColor.windowBackgroundColor */
+  --bg-popover: rgba(246, 246, 246, 0.85);    /* vibrant material approximation */
+  --bg-card: rgba(120, 120, 128, 0.08);       /* .quaternary @ 0.4 — port card fill */
+  --bg-card-hover: rgba(120, 120, 128, 0.12);
+
+  /* Hairlines */
+  --separator: rgba(60, 60, 67, 0.18);        /* NSColor.separatorColor */
+
+  /* System tints — the named SwiftUI Color set, light mode */
+  --tint-blue:    #007AFF;  /* USB device */
+  --tint-purple:  #AF52DE;  /* Thunderbolt / USB4 */
+  --tint-teal:    #30B0C7;  /* DisplayPort / video */
+  --tint-yellow:  #FFCC00;  /* Charging */
+  --tint-orange:  #FF9500;  /* Warning, unknown */
+  --tint-green:   #34C759;  /* OK / well-matched */
+  --tint-red:     #FF3B30;  /* Errors */
+  --tint-accent:  var(--tint-blue); /* AccentColor — defaults to blue */
+
+  /* Tinted backgrounds for inline banners (10–12% of the tint) */
+  --bg-tint-green:   rgba(52, 199, 89, 0.12);
+  --bg-tint-orange:  rgba(255, 149, 0, 0.12);
+  --bg-tint-red:     rgba(255, 59, 48, 0.12);
+  --bg-tint-accent:  rgba(0, 122, 255, 0.12);
+
+  /* Status semantic aliases (used by PortSummary) */
+  --status-charging: var(--tint-yellow);
+  --status-data: var(--tint-blue);
+  --status-thunderbolt: var(--tint-purple);
+  --status-display: var(--tint-teal);
+  --status-empty: var(--fg-secondary);
+  --status-unknown: var(--tint-orange);
+  --status-ok: var(--tint-green);
+  --status-warn: var(--tint-orange);
+
+  /* -----------------------------------------------------------
+     TYPE — system stack + SwiftUI semantic ramp.
+     ----------------------------------------------------------- */
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
+                 "Helvetica Neue", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Sizes — Apple's macOS dynamic-type defaults at default size class */
+  --fs-largeTitle: 26px;
+  --fs-title:      22px;  /* .title  */
+  --fs-title2:     17px;  /* .title2 */
+  --fs-title3:     15px;  /* .title3 */
+  --fs-headline:   13px;  /* .headline (semibold) */
+  --fs-body:       13px;  /* .body */
+  --fs-callout:    12px;  /* .callout */
+  --fs-subhead:    11px;  /* .subheadline */
+  --fs-footnote:   10px;  /* .footnote */
+  --fs-caption:    10px;  /* .caption */
+  --fs-caption2:    9px;  /* .caption2 */
+
+  /* Weights */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;  /* .headline / .bold() */
+  --fw-bold: 700;
+
+  /* Line heights — macOS UI is tight */
+  --lh-tight: 1.15;
+  --lh-normal: 1.30;
+  --lh-relaxed: 1.45;
+
+  /* -----------------------------------------------------------
+     SPACING — 4px base, follows SwiftUI literals in source.
+     ----------------------------------------------------------- */
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 10px;
+  --sp-6: 12px;
+  --sp-7: 14px;
+  --sp-8: 16px;
+  --sp-9: 18px;
+  --sp-10: 24px;
+  --sp-11: 32px;
+
+  /* -----------------------------------------------------------
+     RADII — flat system, only two values.
+     ----------------------------------------------------------- */
+  --radius-card: 10px;       /* PortCard */
+  --radius-pill: 8px;        /* DiagnosticBanner, UpdateBanner */
+  --radius-sm: 5px;          /* small inline chips */
+
+  /* -----------------------------------------------------------
+     ELEVATION — popover only.
+     ----------------------------------------------------------- */
+  --shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.18),
+                    0 2px 6px rgba(0, 0, 0, 0.08);
+
+  /* -----------------------------------------------------------
+     MOTION — calm, native.
+     ----------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-normal: 180ms;
+}
+
+/* Dark mode — macOS Dark Aqua approximations */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg-primary: rgb(255 255 255 / 0.92);
+    --fg-secondary: rgb(235 235 245 / 0.60);
+    --fg-tertiary: rgb(235 235 245 / 0.30);
+    --fg-quaternary: rgb(235 235 245 / 0.16);
+
+    --bg-window: #1E1E1E;
+    --bg-popover: rgba(40, 40, 42, 0.85);
+    --bg-card: rgba(120, 120, 128, 0.18);
+    --bg-card-hover: rgba(120, 120, 128, 0.24);
+
+    --separator: rgba(84, 84, 88, 0.65);
+
+    --tint-blue:   #0A84FF;
+    --tint-purple: #BF5AF2;
+    --tint-teal:   #40C8E0;
+    --tint-yellow: #FFD60A;
+    --tint-orange: #FF9F0A;
+    --tint-green:  #30D158;
+    --tint-red:    #FF453A;
+
+    --bg-tint-green:  rgba(48, 209, 88, 0.15);
+    --bg-tint-orange: rgba(255, 159, 10, 0.15);
+    --bg-tint-red:    rgba(255, 69, 58, 0.15);
+    --bg-tint-accent: rgba(10, 132, 255, 0.15);
+  }
+}
+
+/* =============================================================
+   SEMANTIC ELEMENT STYLES — h1, p, code, etc.
+   These mirror SwiftUI's .title3.bold(), .callout, etc.
+   ============================================================= */
+
+html, body {
+  font-family: var(--font-system);
+  font-size: var(--fs-body);
+  line-height: var(--lh-normal);
+  color: var(--fg-primary);
+  background: var(--bg-window);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1 {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+h2 {
+  font-size: var(--fs-title2);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+h3 {
+  /* .title3.bold() — used for port headlines */
+  font-size: var(--fs-title3);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+h4 {
+  /* .headline */
+  font-size: var(--fs-headline);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+p {
+  font-size: var(--fs-body);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+.callout      { font-size: var(--fs-callout); }
+.caption      { font-size: var(--fs-caption); color: var(--fg-secondary); }
+.caption2     { font-size: var(--fs-caption2); color: var(--fg-secondary); }
+.subhead      { font-size: var(--fs-subhead); color: var(--fg-secondary); }
+.section-label {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--fg-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+code, .mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-feature-settings: "tnum";
+}
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Reusable card and pill primitives */
+.wc-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  padding: var(--sp-7);
+}
+.wc-pill {
+  border-radius: var(--radius-pill);
+  padding: var(--sp-5);
+}
+.wc-divider {
+  height: 1px;
+  background: var(--separator);
+  border: 0;
+}
