@@ -73,7 +73,13 @@ final class USBCPortWatcher: ObservableObject {
             }
             IOObjectRelease(service)
         }
-        ports.sort { $0.serviceName < $1.serviceName }
+        // Active connections first, then alphabetically within each group.
+        ports.sort { lhs, rhs in
+            let lhsActive = lhs.connectionActive == true
+            let rhsActive = rhs.connectionActive == true
+            if lhsActive != rhsActive { return lhsActive }
+            return lhs.serviceName < rhs.serviceName
+        }
     }
 
     private func makePort(from service: io_service_t) -> USBCPort? {
