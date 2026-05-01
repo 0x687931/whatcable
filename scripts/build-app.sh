@@ -129,6 +129,33 @@ fi
 echo "==> Verifying signature"
 codesign --verify --deep --strict --verbose=2 "${APP_DIR}" 2>&1 | sed 's/^/    /'
 
+echo "==> Smoke-testing main binary (must stay alive as a GUI app, not exit immediately)"
+# v0.5.0 shipped with the CLI binary masquerading as the menu bar binary because
+# of a case-insensitive filesystem cp collision. The CLI exits ~immediately; the
+# menu bar app stays alive. Catch that class of bug before notarisation.
+"${MACOS_DIR}/${APP_NAME}" >/dev/null 2>&1 &
+SMOKE_PID=$!
+sleep 2
+if kill -0 "${SMOKE_PID}" 2>/dev/null; then
+    echo "    main binary alive after 2s — looks like a GUI app"
+    kill "${SMOKE_PID}" 2>/dev/null || true
+    wait "${SMOKE_PID}" 2>/dev/null || true
+else
+    echo "    ERROR: ${MACOS_DIR}/${APP_NAME} exited within 2s. The menu bar binary"
+    echo "    should stay running. Check whether it was overwritten by another"
+    echo "    executable during build (case-insensitive FS collision, etc.)." >&2
+    exit 1
+fi
+
+echo "==> Smoke-testing CLI binary (--version must match build VERSION)"
+CLI_VERSION_OUTPUT=$("${HELPERS_DIR}/${CLI_BIN_NAME}" --version 2>&1 | tr -d '[:space:]')
+if [[ "${CLI_VERSION_OUTPUT}" != "${VERSION}" ]]; then
+    echo "    ERROR: CLI --version reported '${CLI_VERSION_OUTPUT}', expected '${VERSION}'." >&2
+    echo "    The CLI binary may not be reading the bundle Info.plist correctly." >&2
+    exit 1
+fi
+echo "    CLI reports ${CLI_VERSION_OUTPUT}"
+
 echo "==> Creating zip"
 ( cd "${DIST_DIR}" && ditto -c -k --keepParent "${APP_NAME}.app" "${APP_NAME}.zip" )
 
