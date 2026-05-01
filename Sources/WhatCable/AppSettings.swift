@@ -12,6 +12,7 @@ final class AppSettings: ObservableObject {
 
     private enum Keys {
         static let notifyOnChanges = "notifyOnChanges"
+        static let hideEmptyPorts = "hideEmptyPorts"
     }
 
     @Published var launchAtLogin: Bool {
@@ -31,11 +32,19 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var hideEmptyPorts: Bool {
+        didSet {
+            guard hideEmptyPorts != oldValue else { return }
+            UserDefaults.standard.set(hideEmptyPorts, forKey: Keys.hideEmptyPorts)
+        }
+    }
+
     private init() {
         // Launch at Login is owned by the system; read its current state.
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
         // Notifications default off — opt in to avoid noise.
         self.notifyOnChanges = UserDefaults.standard.bool(forKey: Keys.notifyOnChanges)
+        self.hideEmptyPorts = UserDefaults.standard.bool(forKey: Keys.hideEmptyPorts)
     }
 
     private func applyLaunchAtLogin(_ enabled: Bool) {

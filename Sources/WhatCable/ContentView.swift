@@ -9,34 +9,15 @@ struct ContentView: View {
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var updates = UpdateChecker.shared
     @State private var showAdvanced = false
+    @State private var showSettings = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            if let update = updates.available {
-                UpdateBanner(update: update)
-            }
-            Divider()
-            if portWatcher.ports.isEmpty {
-                emptyState
+        Group {
+            if showSettings {
+                SettingsView(showAdvanced: $showAdvanced, dismiss: { showSettings = false })
             } else {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(portWatcher.ports) { port in
-                            PortCard(
-                                port: port,
-                                devices: matchingDevices(for: port),
-                                powerSources: powerWatcher.sources(for: port),
-                                identities: pdWatcher.identities(for: port),
-                                showAdvanced: showAdvanced
-                            )
-                        }
-                    }
-                    .padding(12)
-                }
+                mainContent
             }
-            Divider()
-            footer
         }
         .onAppear {
             portWatcher.start()
@@ -54,6 +35,39 @@ struct ContentView: View {
             portWatcher.refresh()
             powerWatcher.refresh()
             pdWatcher.refresh()
+        }
+    }
+
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            header
+            if let update = updates.available {
+                UpdateBanner(update: update)
+            }
+            Divider()
+            let visiblePorts = settings.hideEmptyPorts
+                ? portWatcher.ports.filter { $0.connectionActive == true }
+                : portWatcher.ports
+            if visiblePorts.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(visiblePorts) { port in
+                            PortCard(
+                                port: port,
+                                devices: matchingDevices(for: port),
+                                powerSources: powerWatcher.sources(for: port),
+                                identities: pdWatcher.identities(for: port),
+                                showAdvanced: showAdvanced
+                            )
+                        }
+                    }
+                    .padding(12)
+                }
+            }
+            Divider()
+            footer
         }
     }
 
@@ -75,34 +89,27 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Refresh")
+            Button {
+                showSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            .help("Settings")
         }
         .padding(12)
     }
 
     private var footer: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 16) {
-                Toggle("Show technical details", isOn: $showAdvanced)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                Toggle("Launch at login", isOn: $settings.launchAtLogin)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                Toggle("Notify on cable changes", isOn: $settings.notifyOnChanges)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                Spacer()
-            }
-            HStack {
-                Spacer()
-                Text("\(deviceWatcher.devices.count) USB device\(deviceWatcher.devices.count == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("·").font(.caption).foregroundStyle(.secondary)
-                Text("v\(AppInfo.version) · \(AppInfo.credit)")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+        HStack {
+            Spacer()
+            Text("\(deviceWatcher.devices.count) USB device\(deviceWatcher.devices.count == 1 ? "" : "s")")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text("·").font(.caption).foregroundStyle(.secondary)
+            Text("v\(AppInfo.version) · \(AppInfo.credit)")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
