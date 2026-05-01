@@ -25,6 +25,10 @@ final class UpdateChecker: ObservableObject {
 
     private var timer: Timer?
     private var notifiedVersion: String?
+    /// When a manual "Check for Updates" click arrives while a silent
+    /// background check is in flight, we set this so the in-flight result
+    /// surfaces a visible alert instead of being silently swallowed.
+    private var pendingVisibleCheck = false
 
     private init() {}
 
@@ -38,8 +42,15 @@ final class UpdateChecker: ObservableObject {
     /// Manually trigger a check. When `silent` is false, surfaces an alert
     /// for the "no update" case so the user gets feedback from the menu item.
     func check(silent: Bool) {
-        guard !isChecking else { return }
+        if isChecking {
+            // A check is already in flight. If the user explicitly asked for
+            // one, upgrade the in-flight result to non-silent so they still
+            // get feedback. Multiple manual clicks coalesce into one alert.
+            if !silent { pendingVisibleCheck = true }
+            return
+        }
         isChecking = true
+        pendingVisibleCheck = !silent
 
         var request = URLRequest(url: Self.endpoint)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -51,10 +62,14 @@ final class UpdateChecker: ObservableObject {
                 guard let self else { return }
                 self.isChecking = false
                 self.lastCheck = Date()
+                // If a manual click arrived during the in-flight check, this
+                // gets surfaced. Reset for the next run.
+                let visible = self.pendingVisibleCheck
+                self.pendingVisibleCheck = false
 
                 if let error {
                     Self.log.error("Update check failed: \(error.localizedDescription, privacy: .public)")
-                    if !silent { self.showAlert(title: "Couldn't check for updates", message: error.localizedDescription) }
+                    if visible { self.showAlert(title: "Couldn't check for updates", message: error.localizedDescription) }
                     return
                 }
 
@@ -63,7 +78,7 @@ final class UpdateChecker: ObservableObject {
                       let tag = json["tag_name"] as? String,
                       let urlString = json["html_url"] as? String,
                       let url = URL(string: urlString) else {
-                    if !silent { self.showAlert(title: "Couldn't check for updates", message: "Unexpected response from GitHub.") }
+                    if visible { self.showAlert(title: "Couldn't check for updates", message: "Unexpected response from GitHub.") }
                     return
                 }
 
@@ -83,7 +98,7 @@ final class UpdateChecker: ObservableObject {
                     }
                 } else {
                     self.available = nil
-                    if !silent {
+                    if visible {
                         self.showAlert(
                             title: "You're up to date",
                             message: "WhatCable \(AppInfo.version) is the latest version."
