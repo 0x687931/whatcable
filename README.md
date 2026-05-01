@@ -42,7 +42,7 @@ Download the latest `WhatCable.zip` from the [Releases page](https://github.com/
 
 The app is universal (Apple silicon + Intel), signed with a Developer ID, and notarised by Apple, so there are no Gatekeeper warnings.
 
-Requires macOS 14 (Sonoma) or later.
+Requires macOS 14 (Sonoma) or later. Apple Silicon only. On Intel Macs, the USB-C ports are driven by Intel Titan Ridge / JHL9580 Thunderbolt 3 controllers, and the USB-PD state and cable e-marker data WhatCable depends on are not exposed through any public IOKit accessor.
 
 ### Homebrew
 
@@ -149,6 +149,7 @@ cp .env.example .env
 - **PD spec coverage:** the decoder targets PD 3.0 / 3.1. PD 3.2 EPR variants may need tweaks once we see real data.
 - **Vendor name lookup is bundled but not exhaustive:** common cable, charger, hub, dock, and storage vendors are recognised; others fall back to the hex VID.
 - **macOS only.** iOS sandboxing makes USB-C e-marker access much harder.
+- **Apple Silicon only.** Intel Macs route USB-C through Intel Thunderbolt 3 controllers (Titan Ridge / JHL9580). Apple's IOKit driver for those chips does not expose the USB-PD negotiation state or the cable e-marker VDOs, so there's no path to surface the same information on Intel hardware.
 - **Not on the App Store.** App Sandbox blocks the IOKit reads we depend on.
 
 ## Contributing
