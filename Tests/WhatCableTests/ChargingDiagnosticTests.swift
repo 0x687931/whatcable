@@ -156,4 +156,84 @@ final class ChargingDiagnosticTests: XCTestCase {
         if case .fine = diag?.bottleneck { return }
         XCTFail("expected .fine without cable identity, got \(String(describing: diag?.bottleneck))")
     }
+
+    // MARK: - Edge cases (#15)
+
+    func testStalePDOAtZeroWattsOnDisconnectedPort() {
+        let diag = ChargingDiagnostic(
+            port: inactiveMagSafePort,
+            sources: [usbPD(maxW: 0, winningW: 0)],
+            identities: []
+        )
+        XCTAssertNil(diag)
+    }
+
+    func testStalePDOAt240WOnDisconnectedPort() {
+        let diag = ChargingDiagnostic(
+            port: inactiveMagSafePort,
+            sources: [usbPD(maxW: 240, winningW: 240)],
+            identities: []
+        )
+        XCTAssertNil(diag)
+    }
+
+    func testCable240W_Charger60W_CableIsNotBottleneck() {
+        let diag = ChargingDiagnostic(
+            port: port,
+            sources: [usbPD(maxW: 60, winningW: 60)],
+            identities: [cableIdentity(watts: 240)]
+        )
+        guard case .fine(let n) = diag?.bottleneck else {
+            return XCTFail("expected .fine, got \(String(describing: diag?.bottleneck))")
+        }
+        XCTAssertEqual(n, 60)
+    }
+
+    func testMagSafePowerSourceUsesCorrectPortType() {
+        let magSafeSource = PowerSource(
+            id: 1, name: "USB-PD", parentPortType: 0x11, parentPortNumber: 1,
+            options: [PowerOption(voltageMV: 20_000, maxCurrentMA: 4700, maxPowerMW: 94_000)],
+            winning: PowerOption(voltageMV: 20_000, maxCurrentMA: 4700, maxPowerMW: 94_000)
+        )
+        let magSafePort = USBCPort(
+            id: 1, serviceName: "Port-MagSafe 3@1", className: "AppleHPMInterfaceType11",
+            portDescription: nil, portTypeDescription: "MagSafe 3", portNumber: 1,
+            connectionActive: true,
+            activeCable: nil, opticalCable: nil, usbActive: nil, superSpeedActive: nil,
+            usbModeType: nil, usbConnectString: nil,
+            transportsSupported: [], transportsActive: [], transportsProvisioned: [],
+            plugOrientation: nil, plugEventCount: nil, connectionCount: nil,
+            overcurrentCount: nil, pinConfiguration: [:], powerCurrentLimits: [],
+            firmwareVersion: nil, bootFlagsHex: nil, rawProperties: ["PortType": "17"]
+        )
+        let diag = ChargingDiagnostic(
+            port: magSafePort,
+            sources: [magSafeSource],
+            identities: []
+        )
+        guard case .fine(let n) = diag?.bottleneck else {
+            return XCTFail("expected .fine, got \(String(describing: diag?.bottleneck))")
+        }
+        XCTAssertEqual(n, 94)
+        XCTAssertEqual(magSafePort.portKey, magSafeSource.portKey)
+    }
+
+    func testMultipleSourcesPicksUSBPD() {
+        let brickID = PowerSource(
+            id: 10, name: "Brick ID", parentPortType: 2, parentPortNumber: 1,
+            options: [PowerOption(voltageMV: 20_000, maxCurrentMA: 1500, maxPowerMW: 30_000)],
+            winning: PowerOption(voltageMV: 20_000, maxCurrentMA: 1500, maxPowerMW: 30_000)
+        )
+        let usbPDSource = usbPD(maxW: 96, winningW: 96)
+        // Brick ID listed first to ensure USB-PD is found regardless of order
+        let diag = ChargingDiagnostic(
+            port: port,
+            sources: [brickID, usbPDSource],
+            identities: [cableIdentity(watts: 100)]
+        )
+        guard case .fine(let n) = diag?.bottleneck else {
+            return XCTFail("expected .fine from USB-PD source, got \(String(describing: diag?.bottleneck))")
+        }
+        XCTAssertEqual(n, 96)
+    }
 }

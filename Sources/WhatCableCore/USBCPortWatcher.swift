@@ -109,44 +109,12 @@ public final class USBCPortWatcher: ObservableObject {
             return nil
         }
 
-        // Sanity check: only return things that actually look like a physical
-        // Type-C or MagSafe port. Real ports have a "PortTypeDescription"
-        // and a name like "Port-USB-C@N" / "Port-MagSafe 3@N".
-        let portType = dict["PortTypeDescription"] as? String
-        let isRealPort = (portType == "USB-C" || portType?.hasPrefix("MagSafe") == true)
-            && serviceName.hasPrefix("Port-")
-        guard isRealPort else { return nil }
-
-        var raw: [String: String] = [:]
-        for (k, v) in dict { raw[k] = stringify(v) }
-
-        return USBCPort(
-            id: entryID,
+        return USBCPort.from(
+            entryID: entryID,
             serviceName: serviceName,
             className: className,
-            portDescription: dict["PortDescription"] as? String,
-            portTypeDescription: dict["PortTypeDescription"] as? String,
-            portNumber: (dict["PortNumber"] as? NSNumber)?.intValue,
-            connectionActive: (dict["ConnectionActive"] as? NSNumber)?.boolValue,
-            activeCable: (dict["ActiveCable"] as? NSNumber)?.boolValue,
-            opticalCable: (dict["OpticalCable"] as? NSNumber)?.boolValue,
-            usbActive: (dict["IOAccessoryUSBActive"] as? NSNumber)?.boolValue,
-            superSpeedActive: (dict["IOAccessoryUSBSuperSpeedActive"] as? NSNumber)?.boolValue,
-            usbModeType: (dict["IOAccessoryUSBModeType"] as? NSNumber)?.intValue,
-            usbConnectString: dict["IOAccessoryUSBConnectString"] as? String,
-            transportsSupported: stringArray(dict["TransportsSupported"]),
-            transportsActive: stringArray(dict["TransportsActive"]),
-            transportsProvisioned: stringArray(dict["TransportsProvisioned"]),
-            plugOrientation: (dict["PlugOrientation"] as? NSNumber)?.intValue,
-            plugEventCount: (dict["Plug Event Count"] as? NSNumber)?.intValue,
-            connectionCount: (dict["ConnectionCount"] as? NSNumber)?.intValue,
-            overcurrentCount: (dict["Overcurrent Count"] as? NSNumber)?.intValue,
-            pinConfiguration: pinConfig(dict["Pin Configuration"]),
-            powerCurrentLimits: intArray(dict["IOAccessoryPowerCurrentLimits"]),
-            firmwareVersion: hexData(dict["FW Version"]),
-            bootFlagsHex: hexData(dict["Boot Flags"]),
-            busIndex: busIndex(for: service),
-            rawProperties: raw
+            properties: dict,
+            busIndex: busIndex(for: service)
         )
     }
 
@@ -182,35 +150,4 @@ public final class USBCPortWatcher: ObservableObject {
         return nil
     }
 
-    private func stringArray(_ value: Any?) -> [String] {
-        (value as? [Any])?.compactMap { $0 as? String } ?? []
-    }
-
-    private func intArray(_ value: Any?) -> [Int] {
-        (value as? [Any])?.compactMap { ($0 as? NSNumber)?.intValue } ?? []
-    }
-
-    private func pinConfig(_ value: Any?) -> [String: String] {
-        guard let dict = value as? [String: Any] else { return [:] }
-        var result: [String: String] = [:]
-        for (k, v) in dict { result[k] = stringify(v) }
-        return result
-    }
-
-    private func hexData(_ value: Any?) -> String? {
-        guard let data = value as? Data else { return nil }
-        return data.map { String(format: "%02X", $0) }.joined(separator: " ")
-    }
-
-    private func stringify(_ value: Any) -> String {
-        switch value {
-        case let n as NSNumber: return n.stringValue
-        case let s as String: return s
-        case let d as Data: return d.map { String(format: "%02X", $0) }.joined(separator: " ")
-        case let a as [Any]: return "[" + a.map { stringify($0) }.joined(separator: ", ") + "]"
-        case let d as [String: Any]:
-            return "{" + d.map { "\($0.key): \(stringify($0.value))" }.joined(separator: ", ") + "}"
-        default: return String(describing: value)
-        }
-    }
 }

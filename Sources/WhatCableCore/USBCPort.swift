@@ -32,6 +32,59 @@ public struct USBCPort: Identifiable, Hashable {
     public let busIndex: Int?
     public let rawProperties: [String: String]
 
+    /// Build a `USBCPort` from a parsed IOKit property dictionary. Returns nil
+    /// if the entry isn't a real physical Type-C / MagSafe port. Lives in
+    /// `WhatCableCore` rather than the watcher so it can be exercised against
+    /// fixture data without IOKit. The watcher feeds in real CFProperties;
+    /// tests feed in hand-crafted dictionaries derived from `ioreg` dumps.
+    public static func from(
+        entryID: UInt64,
+        serviceName: String,
+        className: String,
+        properties: [String: Any],
+        busIndex: Int? = nil
+    ) -> USBCPort? {
+        // Only return things that actually look like a physical Type-C or
+        // MagSafe port. Real ports have a `PortTypeDescription` and a name
+        // like `Port-USB-C@N` / `Port-MagSafe 3@N`.
+        let portType = properties["PortTypeDescription"] as? String
+        let isRealPort = (portType == "USB-C" || portType?.hasPrefix("MagSafe") == true)
+            && serviceName.hasPrefix("Port-")
+        guard isRealPort else { return nil }
+
+        var raw: [String: String] = [:]
+        for (k, v) in properties { raw[k] = stringifyProperty(v) }
+
+        return USBCPort(
+            id: entryID,
+            serviceName: serviceName,
+            className: className,
+            portDescription: properties["PortDescription"] as? String,
+            portTypeDescription: properties["PortTypeDescription"] as? String,
+            portNumber: (properties["PortNumber"] as? NSNumber)?.intValue,
+            connectionActive: (properties["ConnectionActive"] as? NSNumber)?.boolValue,
+            activeCable: (properties["ActiveCable"] as? NSNumber)?.boolValue,
+            opticalCable: (properties["OpticalCable"] as? NSNumber)?.boolValue,
+            usbActive: (properties["IOAccessoryUSBActive"] as? NSNumber)?.boolValue,
+            superSpeedActive: (properties["IOAccessoryUSBSuperSpeedActive"] as? NSNumber)?.boolValue,
+            usbModeType: (properties["IOAccessoryUSBModeType"] as? NSNumber)?.intValue,
+            usbConnectString: properties["IOAccessoryUSBConnectString"] as? String,
+            transportsSupported: stringArrayProperty(properties["TransportsSupported"]),
+            transportsActive: stringArrayProperty(properties["TransportsActive"]),
+            transportsProvisioned: stringArrayProperty(properties["TransportsProvisioned"]),
+            plugOrientation: (properties["PlugOrientation"] as? NSNumber)?.intValue,
+            plugEventCount: (properties["Plug Event Count"] as? NSNumber)?.intValue,
+            connectionCount: (properties["ConnectionCount"] as? NSNumber)?.intValue,
+            overcurrentCount: (properties["Overcurrent Count"] as? NSNumber)?.intValue,
+            pinConfiguration: pinConfigProperty(properties["Pin Configuration"]),
+            powerCurrentLimits: intArrayProperty(properties["IOAccessoryPowerCurrentLimits"]),
+            firmwareVersion: hexDataProperty(properties["FW Version"]),
+            bootFlagsHex: hexDataProperty(properties["Boot Flags"]),
+            busIndex: busIndex,
+            rawProperties: raw
+        )
+    }
+
     public init(
         id: UInt64,
         serviceName: String,
@@ -86,5 +139,42 @@ public struct USBCPort: Identifiable, Hashable {
         self.bootFlagsHex = bootFlagsHex
         self.busIndex = busIndex
         self.rawProperties = rawProperties
+    }
+}
+
+// MARK: - Property-dictionary parsing helpers
+//
+// Used by `USBCPort.from(...)` and (transitively) by the watcher. Pulled out
+// to file scope so the pure factory can run without an instance.
+
+func stringArrayProperty(_ value: Any?) -> [String] {
+    (value as? [Any])?.compactMap { $0 as? String } ?? []
+}
+
+func intArrayProperty(_ value: Any?) -> [Int] {
+    (value as? [Any])?.compactMap { ($0 as? NSNumber)?.intValue } ?? []
+}
+
+func pinConfigProperty(_ value: Any?) -> [String: String] {
+    guard let dict = value as? [String: Any] else { return [:] }
+    var result: [String: String] = [:]
+    for (k, v) in dict { result[k] = stringifyProperty(v) }
+    return result
+}
+
+func hexDataProperty(_ value: Any?) -> String? {
+    guard let data = value as? Data else { return nil }
+    return data.map { String(format: "%02X", $0) }.joined(separator: " ")
+}
+
+func stringifyProperty(_ value: Any) -> String {
+    switch value {
+    case let n as NSNumber: return n.stringValue
+    case let s as String: return s
+    case let d as Data: return d.map { String(format: "%02X", $0) }.joined(separator: " ")
+    case let a as [Any]: return "[" + a.map { stringifyProperty($0) }.joined(separator: ", ") + "]"
+    case let d as [String: Any]:
+        return "{" + d.map { "\($0.key): \(stringifyProperty($0.value))" }.joined(separator: ", ") + "}"
+    default: return String(describing: value)
     }
 }
