@@ -10,6 +10,8 @@ USB-C is the worst kind of standard: identical-looking connectors covering every
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://github.com/darrylmorley/whatcable)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+![WhatCable popover](docs/screenshot.png)
+
 ## What it shows
 
 Per port, in plain English:
