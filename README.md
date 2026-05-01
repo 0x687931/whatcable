@@ -44,6 +44,8 @@ The app is universal (Apple silicon + Intel), signed with a Developer ID, and no
 
 Requires macOS 14 (Sonoma) or later. Apple Silicon only. On Intel Macs, the USB-C ports are driven by Intel Titan Ridge / JHL9580 Thunderbolt 3 controllers, and the USB-PD state and cable e-marker data WhatCable depends on are not exposed through any public IOKit accessor.
 
+> **Note:** The manual install gives you the menu bar app only. The `whatcable` CLI is bundled inside the `.app` and is not on your PATH by default. If you want to use it from the shell, see the [Command-line interface](#command-line-interface) section below for the one-line symlink. Or install via Homebrew, which sets up the CLI automatically.
+
 ### Homebrew
 
 ```bash
