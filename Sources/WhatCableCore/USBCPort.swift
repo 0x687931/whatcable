@@ -25,6 +25,11 @@ public struct USBCPort: Identifiable, Hashable {
     public let powerCurrentLimits: [Int]
     public let firmwareVersion: String?
     public let bootFlagsHex: String?
+    /// Index of the XHCI controller serving this physical port, derived from
+    /// the `hpmN@…` ancestor in the IOKit parent chain on M3+ machines.
+    /// Pairs with `USBDevice.busIndex` for device-to-port matching. `nil`
+    /// when the parent walk doesn't find an `hpm` node (e.g. M1/M2, MagSafe).
+    public let busIndex: Int?
     public let rawProperties: [String: String]
 
     public init(
@@ -52,6 +57,7 @@ public struct USBCPort: Identifiable, Hashable {
         powerCurrentLimits: [Int],
         firmwareVersion: String?,
         bootFlagsHex: String?,
+        busIndex: Int? = nil,
         rawProperties: [String: String]
     ) {
         self.id = id
@@ -78,6 +84,7 @@ public struct USBCPort: Identifiable, Hashable {
         self.powerCurrentLimits = powerCurrentLimits
         self.firmwareVersion = firmwareVersion
         self.bootFlagsHex = bootFlagsHex
+        self.busIndex = busIndex
         self.rawProperties = rawProperties
     }
 }

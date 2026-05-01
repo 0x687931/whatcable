@@ -12,6 +12,11 @@ public struct USBDevice: Identifiable, Hashable {
     public let speedRaw: UInt8?
     public let busPowerMA: Int?
     public let currentMA: Int?
+    /// Index of the XHCI controller this device is attached to, derived from
+    /// the upper byte of `locationID` (and confirmed by walking the IOKit
+    /// parent chain to the `AppleT*USBXHCI` ancestor). Used to associate the
+    /// device with its physical USB-C port. `nil` if the parent walk failed.
+    public let busIndex: Int?
     public let rawProperties: [String: String]
 
     public init(
@@ -26,6 +31,7 @@ public struct USBDevice: Identifiable, Hashable {
         speedRaw: UInt8?,
         busPowerMA: Int?,
         currentMA: Int?,
+        busIndex: Int? = nil,
         rawProperties: [String: String]
     ) {
         self.id = id
@@ -39,6 +45,7 @@ public struct USBDevice: Identifiable, Hashable {
         self.speedRaw = speedRaw
         self.busPowerMA = busPowerMA
         self.currentMA = currentMA
+        self.busIndex = busIndex
         self.rawProperties = rawProperties
     }
 

@@ -156,12 +156,28 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Heuristic: USB devices' `locationID` upper byte often correlates with the
-    /// physical port. Without a perfect map, just surface all devices on the
-    /// first connected port.
+    /// Match USB devices to their physical port. The IOKit relationship
+    /// isn't direct: USB devices live under the XHCI controller subtree,
+    /// physical ports under the SPMI/HPM subtree. We bridge them with a
+    /// "bus index": for ports it comes from the `hpm<N>` ancestor (M3+),
+    /// for devices it comes from the `locationID` upper byte (which equals
+    /// the parent XHCI controller's locationID upper byte).
+    ///
+    /// Falls back to the `TransportsActive` USB filter when the port has
+    /// no derivable bus index (M1/M2, MagSafe). That at least keeps USB
+    /// devices off DisplayPort-only / charge-only ports, even if it can't
+    /// fully disambiguate which port a device is on.
     private func matchingDevices(for port: USBCPort) -> [USBDevice] {
         guard port.connectionActive == true else { return [] }
+        guard portCarriesUSB(port) else { return [] }
+        if let portBus = port.busIndex {
+            return deviceWatcher.devices.filter { $0.busIndex == portBus }
+        }
         return deviceWatcher.devices
+    }
+
+    private func portCarriesUSB(_ port: USBCPort) -> Bool {
+        port.transportsActive.contains { $0 == "USB2" || $0 == "USB3" }
     }
 }
 

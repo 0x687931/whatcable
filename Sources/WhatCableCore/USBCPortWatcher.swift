@@ -145,8 +145,41 @@ public final class USBCPortWatcher: ObservableObject {
             powerCurrentLimits: intArray(dict["IOAccessoryPowerCurrentLimits"]),
             firmwareVersion: hexData(dict["FW Version"]),
             bootFlagsHex: hexData(dict["Boot Flags"]),
+            busIndex: busIndex(for: service),
             rawProperties: raw
         )
+    }
+
+    /// Walks the IOKit parent chain looking for an `hpm<N>@…` SPMI node and
+    /// returns N. On M3+ machines this N matches the upper byte of the
+    /// associated XHCI controller's `locationID`, giving a bus index that
+    /// can be matched against `USBDevice.busIndex`. Returns `nil` on
+    /// machines that don't expose the hpm hierarchy (M1/M2, where ports
+    /// register directly under `AppleTCControllerType10/11`).
+    private func busIndex(for service: io_service_t) -> Int? {
+        var current = service
+        IOObjectRetain(current)
+        defer { IOObjectRelease(current) }
+
+        for _ in 0..<8 {
+            var parent: io_service_t = 0
+            guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
+                return nil
+            }
+            IOObjectRelease(current)
+            current = parent
+
+            var nameBuf = [CChar](repeating: 0, count: 128)
+            IORegistryEntryGetName(current, &nameBuf)
+            let name = String(cString: nameBuf)
+            if name.hasPrefix("hpm"), let at = name.firstIndex(of: "@") {
+                let digits = name[name.index(name.startIndex, offsetBy: 3)..<at]
+                if let n = Int(digits) {
+                    return n
+                }
+            }
+        }
+        return nil
     }
 
     private func stringArray(_ value: Any?) -> [String] {

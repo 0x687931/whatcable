@@ -121,8 +121,44 @@ public final class USBWatcher: ObservableObject {
             speedRaw: speedRaw,
             busPowerMA: busPower,
             currentMA: current,
+            busIndex: busIndex(for: service, fallback: locationID),
             rawProperties: raw
         )
+    }
+
+    /// Walks the IOKit parent chain looking for the `AppleT*USBXHCI`
+    /// ancestor of an `IOUSBHostDevice` and returns the upper byte of its
+    /// own `locationID` as a bus index. Falls back to the upper byte of the
+    /// device's own `locationID` if the walk doesn't reach an XHCI ancestor
+    /// (the encoding is the same — devices inherit the controller's
+    /// location prefix).
+    private func busIndex(for service: io_service_t, fallback locationID: UInt32) -> Int? {
+        var current = service
+        IOObjectRetain(current)
+        defer { IOObjectRelease(current) }
+
+        for _ in 0..<8 {
+            var parent: io_service_t = 0
+            guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
+                break
+            }
+            IOObjectRelease(current)
+            current = parent
+
+            var classBuf = [CChar](repeating: 0, count: 128)
+            IOObjectGetClass(current, &classBuf)
+            let className = String(cString: classBuf)
+            if className.hasPrefix("AppleT") && className.hasSuffix("USBXHCI") {
+                if let loc = (IORegistryEntryCreateCFProperty(current, "locationID" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? NSNumber)?.uint32Value {
+                    return Int((loc >> 24) & 0xFF)
+                }
+                break
+            }
+        }
+        // Fallback: the device's own locationID upper byte mirrors its
+        // controller's locationID upper byte on Apple Silicon.
+        let upper = Int((locationID >> 24) & 0xFF)
+        return upper
     }
 
     private func formatBCD(_ value: UInt16) -> String {
