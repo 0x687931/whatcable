@@ -20,13 +20,20 @@ struct WhatCableCLI {
 
         let showRaw = args.contains("--raw")
         let asJSON = args.contains("--json")
+        let watch = args.contains("--watch")
 
         // Reject unknown flags so typos don't silently produce default output.
-        let knownFlags: Set<String> = ["--raw", "--json", "-h", "--help", "--version"]
+        let knownFlags: Set<String> = ["--raw", "--json", "--watch", "-h", "--help", "--version"]
         for arg in args where arg.hasPrefix("-") && !knownFlags.contains(arg) {
             FileHandle.standardError.write(Data("whatcable: unknown option \(arg)\n".utf8))
             FileHandle.standardError.write(Data(helpText.utf8))
             exit(2)
+        }
+
+        if watch {
+            let runner = WatchRunner(asJSON: asJSON, showRaw: showRaw)
+            runner.start()
+            dispatchMain()
         }
 
         let portWatcher = USBCPortWatcher()
@@ -67,6 +74,7 @@ struct WhatCableCLI {
     Usage: whatcable [options]
 
     Options:
+      --watch        Continuously monitor for changes (Ctrl+C to exit)
       --json         Output as JSON instead of human-readable text
       --raw          Include raw IOKit properties for each port
       --version      Print version and exit
