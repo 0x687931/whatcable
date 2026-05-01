@@ -1,0 +1,132 @@
+import XCTest
+@testable import WhatCable
+
+final class ChargingDiagnosticTests: XCTestCase {
+
+    // MARK: - Fixtures
+
+    private var port: USBCPort {
+        USBCPort(
+            id: 1,
+            serviceName: "Port-USB-C@1",
+            className: "AppleHPMInterfaceType10",
+            portDescription: nil,
+            portTypeDescription: "USB-C",
+            portNumber: 1,
+            connectionActive: true,
+            activeCable: nil,
+            opticalCable: nil,
+            usbActive: nil,
+            superSpeedActive: nil,
+            usbModeType: nil,
+            usbConnectString: nil,
+            transportsSupported: [],
+            transportsActive: [],
+            transportsProvisioned: [],
+            plugOrientation: nil,
+            plugEventCount: nil,
+            connectionCount: nil,
+            overcurrentCount: nil,
+            pinConfiguration: [:],
+            powerCurrentLimits: [],
+            firmwareVersion: nil,
+            bootFlagsHex: nil,
+            rawProperties: [:]
+        )
+    }
+
+    /// Build a USB-PD source advertising up to `maxW` and currently negotiating `winningW`.
+    private func usbPD(maxW: Int, winningW: Int) -> PowerSource {
+        let winning = PowerOption(voltageMV: 20_000, maxCurrentMA: winningW * 50, maxPowerMW: winningW * 1000)
+        let max = PowerOption(voltageMV: 20_000, maxCurrentMA: maxW * 50, maxPowerMW: maxW * 1000)
+        return PowerSource(
+            id: 1, name: "USB-PD", parentPortType: 2, parentPortNumber: 1,
+            options: [max], winning: winning
+        )
+    }
+
+    /// Build a cable e-marker identity advertising the given watt rating.
+    /// We pin watts via maxV/current bits: 5A @ 20V = 100W, 3A @ 20V = 60W.
+    private func cableIdentity(watts: Int) -> PDIdentity {
+        let cableVDO: UInt32 = {
+            switch watts {
+            case 100: return 0b011 | (1 << 4) | (2 << 5)  // 5A passive
+            case 60:  return 0b000 | (1 << 5)             // 3A USB2
+            case 240: return 0b011 | (2 << 5) | (3 << 9)  // 5A @ 50V (EPR)
+            default:  fatalError("unhandled fixture wattage \(watts)")
+            }
+        }()
+        // ID header: ufpProductType = 3 (passive cable), bits 29..27 = 011
+        let idHeader: UInt32 = 0x1800_0000
+        // VDO[3] holds the cable VDO; pad indices 1 and 2 with zero.
+        return PDIdentity(
+            id: 2, endpoint: .sopPrime,
+            parentPortType: 2, parentPortNumber: 1,
+            vendorID: 0, productID: 0, bcdDevice: 0,
+            vdos: [idHeader, 0, 0, cableVDO],
+            specRevision: 0
+        )
+    }
+
+    // MARK: - Cases
+
+    func testReturnsNilWithoutUSBPDSource() {
+        let diag = ChargingDiagnostic(port: port, sources: [], identities: [])
+        XCTAssertNil(diag)
+    }
+
+    func testCableLimitsCharger() {
+        // 96W charger + 60W cable -> cable is the bottleneck
+        let diag = ChargingDiagnostic(
+            port: port,
+            sources: [usbPD(maxW: 96, winningW: 60)],
+            identities: [cableIdentity(watts: 60)]
+        )
+        guard case .cableLimit(let cableW, let chargerW) = diag?.bottleneck else {
+            return XCTFail("expected .cableLimit, got \(String(describing: diag?.bottleneck))")
+        }
+        XCTAssertEqual(cableW, 60)
+        XCTAssertEqual(chargerW, 96)
+        XCTAssertTrue(diag!.isWarning)
+    }
+
+    func testMacIsRequestingLess() {
+        // 96W charger + 100W cable, but Mac is only pulling 30W (battery near full)
+        let diag = ChargingDiagnostic(
+            port: port,
+            sources: [usbPD(maxW: 96, winningW: 30)],
+            identities: [cableIdentity(watts: 100)]
+        )
+        guard case .macLimit(let n, let chargerW, let cableW) = diag?.bottleneck else {
+            return XCTFail("expected .macLimit, got \(String(describing: diag?.bottleneck))")
+        }
+        XCTAssertEqual(n, 30)
+        XCTAssertEqual(chargerW, 96)
+        XCTAssertEqual(cableW, 100)
+    }
+
+    func testEverythingMatched() {
+        // 96W charger + 100W cable + 96W winning -> .fine
+        let diag = ChargingDiagnostic(
+            port: port,
+            sources: [usbPD(maxW: 96, winningW: 96)],
+            identities: [cableIdentity(watts: 100)]
+        )
+        guard case .fine(let n) = diag?.bottleneck else {
+            return XCTFail("expected .fine, got \(String(describing: diag?.bottleneck))")
+        }
+        XCTAssertEqual(n, 96)
+        XCTAssertFalse(diag!.isWarning)
+    }
+
+    func testNoCableEmarker_FineIfMatched() {
+        // Charger advertises 60W, Mac negotiates 60W, no cable identity.
+        let diag = ChargingDiagnostic(
+            port: port,
+            sources: [usbPD(maxW: 60, winningW: 60)],
+            identities: []
+        )
+        if case .fine = diag?.bottleneck { return }
+        XCTFail("expected .fine without cable identity, got \(String(describing: diag?.bottleneck))")
+    }
+}

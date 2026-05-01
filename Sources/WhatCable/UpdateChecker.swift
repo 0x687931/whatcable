@@ -122,7 +122,7 @@ final class UpdateChecker: ObservableObject {
     }
 
     /// Compare dot-separated numeric versions. Non-numeric segments compare lexically.
-    static func isNewer(remote: String, current: String) -> Bool {
+    nonisolated static func isNewer(remote: String, current: String) -> Bool {
         let r = parts(remote)
         let c = parts(current)
         for i in 0..<max(r.count, c.count) {
@@ -133,7 +133,7 @@ final class UpdateChecker: ObservableObject {
         return false
     }
 
-    private static func parts(_ version: String) -> [Int] {
+    private nonisolated static func parts(_ version: String) -> [Int] {
         version.split(separator: ".").map { Int($0) ?? 0 }
     }
 }
