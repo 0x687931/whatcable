@@ -6,7 +6,24 @@ public enum AppInfo {
         // Single source of truth lives in the .app's Info.plist (written by
         // scripts/build-app.sh). Falls back to "dev" when run via `swift run`,
         // which has no bundled Info.plist.
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "dev"
+        if let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
+            return v
+        }
+        // The CLI binary at Contents/Helpers/whatcable lives one extra level
+        // deep, so Bundle.main doesn't auto-resolve to the .app. Walk up from
+        // the executable until we find a Contents/Info.plist sibling.
+        let exe = Bundle.main.executablePath ?? CommandLine.arguments.first ?? ""
+        var dir = URL(fileURLWithPath: exe).deletingLastPathComponent()
+        for _ in 0..<4 {
+            let plist = dir.appendingPathComponent("Info.plist")
+            if let data = try? Data(contentsOf: plist),
+               let parsed = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+               let v = parsed["CFBundleShortVersionString"] as? String {
+                return v
+            }
+            dir = dir.deletingLastPathComponent()
+        }
+        return "dev"
     }()
     public static let credit = "Darryl Morley"
     public static let tagline = "What can this USB-C cable actually do?"
