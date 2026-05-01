@@ -68,7 +68,7 @@ final class PDVDOTests: XCTestCase {
         XCTAssertEqual(cable.current, .fiveAmp)
         XCTAssertEqual(cable.maxVoltageEncoded, 3)
         XCTAssertEqual(cable.maxVolts, 50)
-        XCTAssertEqual(cable.maxWatts, 250) // 50V * 5A — EPR cable
+        XCTAssertEqual(cable.maxWatts, 240) // USB-PD EPR caps at 240W
     }
 
     func testActiveCableType() {

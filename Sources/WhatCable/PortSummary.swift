@@ -132,12 +132,6 @@ extension PortSummary {
             return w > 0 ? w : nil
         }()
         let chargerSuffix = chargerW.map { " · \($0)W charger" } ?? ""
-        let cableSpeedSuffix: String = {
-            guard let cv = cableEmarker?.cableVDO else { return "" }
-            return " · \(cv.speed.label)"
-        }()
-        let _ = cableSpeedSuffix // available if we later want to fold into headlines
-
         if hasTB {
             self.status = .thunderboltCable
             self.headline = "Thunderbolt / USB4" + chargerSuffix

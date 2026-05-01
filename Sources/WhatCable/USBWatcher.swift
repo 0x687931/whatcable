@@ -63,6 +63,15 @@ final class USBWatcher: ObservableObject {
         devices.removeAll()
     }
 
+    func refresh() {
+        devices.removeAll()
+        var iter: io_iterator_t = 0
+        if IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOUSBHostDevice"), &iter) == KERN_SUCCESS {
+            handleAdded(iterator: iter)
+            IOObjectRelease(iter)
+        }
+    }
+
     private func handleAdded(iterator: io_iterator_t) {
         while case let service = IOIteratorNext(iterator), service != 0 {
             if let device = makeDevice(from: service) {
@@ -77,22 +86,15 @@ final class USBWatcher: ObservableObject {
 
     private func handleRemoved(iterator: io_iterator_t) {
         while case let service = IOIteratorNext(iterator), service != 0 {
-            var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
+            let entryID = IOKitSupport.entryID(for: service)
             devices.removeAll { $0.id == entryID }
             IOObjectRelease(service)
         }
     }
 
     private func makeDevice(from service: io_service_t) -> USBDevice? {
-        var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
-
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
-        }
+        let entryID = IOKitSupport.entryID(for: service)
+        guard let dict = IOKitSupport.properties(for: service) else { return nil }
 
         let vendorID = (dict["idVendor"] as? NSNumber)?.uint16Value ?? 0
         let productID = (dict["idProduct"] as? NSNumber)?.uint16Value ?? 0
@@ -102,11 +104,6 @@ final class USBWatcher: ObservableObject {
         let busPower = (dict["Bus Power Available"] as? NSNumber).map { $0.intValue * 2 }
         let current = (dict["Requested Power"] as? NSNumber).map { $0.intValue * 2 }
 
-        var raw: [String: String] = [:]
-        for (k, v) in dict {
-            raw[k] = stringify(v)
-        }
-
         return USBDevice(
             id: entryID,
             locationID: locationID,
@@ -114,12 +111,10 @@ final class USBWatcher: ObservableObject {
             productID: productID,
             vendorName: dict["USB Vendor Name"] as? String,
             productName: dict["USB Product Name"] as? String,
-            serialNumber: dict["USB Serial Number"] as? String,
             usbVersion: bcdUSB.map { formatBCD($0) },
             speedRaw: speedRaw,
             busPowerMA: busPower,
-            currentMA: current,
-            rawProperties: raw
+            currentMA: current
         )
     }
 
@@ -130,14 +125,4 @@ final class USBWatcher: ObservableObject {
         return sub == 0 ? "\(major).\(minor)" : "\(major).\(minor).\(sub)"
     }
 
-    private func stringify(_ value: Any) -> String {
-        switch value {
-        case let n as NSNumber: return n.stringValue
-        case let s as String: return s
-        case let d as Data: return d.map { String(format: "%02X", $0) }.joined(separator: " ")
-        case let a as [Any]: return "[\(a.map { stringify($0) }.joined(separator: ", "))]"
-        default: return String(describing: value)
-        }
-    }
 }
-

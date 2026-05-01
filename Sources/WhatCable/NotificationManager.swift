@@ -6,16 +6,15 @@ import os.log
 /// Posts user notifications when USB-C cables / power sources connect or
 /// disconnect, gated by the user's `AppSettings.notifyOnChanges` preference.
 ///
-/// Runs its own watchers so events are observed even when the popover is
-/// closed — the UI's watchers only run while the popover is on screen.
+/// Observes the shared app-level cable state so notifications keep working
+/// even when the popover is closed.
 @MainActor
 final class NotificationManager {
     static let shared = NotificationManager()
 
     private nonisolated static let log = Logger(subsystem: "com.bitmoor.whatcable", category: "notifications")
 
-    private let usbWatcher = USBWatcher()
-    private let powerWatcher = PowerSourceWatcher()
+    private let cableStore = CableStateStore.shared
     private var cancellables = Set<AnyCancellable>()
 
     private var knownDeviceIDs: Set<UInt64> = []
@@ -25,23 +24,22 @@ final class NotificationManager {
     private init() {}
 
     func start() {
-        usbWatcher.start()
-        powerWatcher.start()
+        cableStore.start()
 
         // Prime baseline on the next runloop tick so we don't fire a flurry
         // of "connected" notifications for things already plugged in at launch.
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.knownDeviceIDs = Set(self.usbWatcher.devices.map(\.id))
-            self.knownSourceIDs = Set(self.powerWatcher.sources.map(\.id))
+            self.knownDeviceIDs = Set(self.cableStore.devices.map(\.id))
+            self.knownSourceIDs = Set(self.cableStore.sources.map(\.id))
             self.didPrimeBaseline = true
         }
 
-        usbWatcher.$devices
+        cableStore.$devices
             .sink { [weak self] devices in self?.diffDevices(devices) }
             .store(in: &cancellables)
 
-        powerWatcher.$sources
+        cableStore.$sources
             .sink { [weak self] sources in self?.diffSources(sources) }
             .store(in: &cancellables)
     }

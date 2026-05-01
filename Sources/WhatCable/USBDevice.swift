@@ -7,12 +7,10 @@ struct USBDevice: Identifiable, Hashable {
     let productID: UInt16
     let vendorName: String?
     let productName: String?
-    let serialNumber: String?
     let usbVersion: String?
     let speedRaw: UInt8?
     let busPowerMA: Int?
     let currentMA: Int?
-    let rawProperties: [String: String]
 
     var speedLabel: String {
         // IOUSBHostDevice "Device Speed" enum values

@@ -26,4 +26,11 @@ struct USBCPort: Identifiable, Hashable {
     let firmwareVersion: String?
     let bootFlagsHex: String?
     let rawProperties: [String: String]
+
+    /// Match key joining port-controller, power-source, and PD identity views.
+    var portKey: String? {
+        guard let n = portNumber else { return nil }
+        let rawType = rawProperties["PortType"].flatMap { Int($0) } ?? 0x2
+        return "\(rawType)/\(n)"
+    }
 }

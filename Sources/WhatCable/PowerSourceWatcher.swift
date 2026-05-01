@@ -66,22 +66,15 @@ final class PowerSourceWatcher: ObservableObject {
 
     private func handleRemoved(_ iter: io_iterator_t) {
         while case let service = IOIteratorNext(iter), service != 0 {
-            var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
+            let entryID = IOKitSupport.entryID(for: service)
             sources.removeAll { $0.id == entryID }
             IOObjectRelease(service)
         }
     }
 
     private func makeSource(from service: io_service_t) -> PowerSource? {
-        var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
-
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
-        }
+        let entryID = IOKitSupport.entryID(for: service)
+        guard let dict = IOKitSupport.properties(for: service) else { return nil }
 
         let name = (dict["PowerSourceName"] as? String) ?? "Unknown"
         let parentType = (dict["ParentPortType"] as? NSNumber)?.intValue ?? 0
@@ -126,13 +119,5 @@ final class PowerSourceWatcher: ObservableObject {
         let p = (dict["Max Power (mW)"] as? NSNumber)?.intValue ?? (v * i / 1000)
         guard v > 0 else { return nil }
         return PowerOption(voltageMV: v, maxCurrentMA: i, maxPowerMW: p)
-    }
-}
-
-extension PowerSourceWatcher {
-    /// All power sources attached to a given port.
-    func sources(for port: USBCPort) -> [PowerSource] {
-        guard let key = port.portKey else { return [] }
-        return sources.filter { $0.portKey == key }
     }
 }

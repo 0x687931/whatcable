@@ -89,8 +89,7 @@ final class USBCPortWatcher: ObservableObject {
     }
 
     private func makePort(from service: io_service_t) -> USBCPort? {
-        var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
+        let entryID = IOKitSupport.entryID(for: service)
 
         var nameBuf = [CChar](repeating: 0, count: 128)
         IORegistryEntryGetName(service, &nameBuf)
@@ -100,11 +99,7 @@ final class USBCPortWatcher: ObservableObject {
         IOObjectGetClass(service, &classBuf)
         let className = String(cString: classBuf)
 
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
-        }
+        guard let dict = IOKitSupport.properties(for: service) else { return nil }
 
         // Sanity check: only return things that actually look like a physical
         // Type-C or MagSafe port. Real ports have a "PortTypeDescription"
@@ -114,8 +109,7 @@ final class USBCPortWatcher: ObservableObject {
             && serviceName.hasPrefix("Port-")
         guard isRealPort else { return nil }
 
-        var raw: [String: String] = [:]
-        for (k, v) in dict { raw[k] = stringify(v) }
+        let raw = IOKitSupport.stringProperties(from: dict)
 
         return USBCPort(
             id: entryID,
@@ -140,8 +134,8 @@ final class USBCPortWatcher: ObservableObject {
             overcurrentCount: (dict["Overcurrent Count"] as? NSNumber)?.intValue,
             pinConfiguration: pinConfig(dict["Pin Configuration"]),
             powerCurrentLimits: intArray(dict["IOAccessoryPowerCurrentLimits"]),
-            firmwareVersion: hexData(dict["FW Version"]),
-            bootFlagsHex: hexData(dict["Boot Flags"]),
+            firmwareVersion: IOKitSupport.hexData(dict["FW Version"]),
+            bootFlagsHex: IOKitSupport.hexData(dict["Boot Flags"]),
             rawProperties: raw
         )
     }
@@ -157,24 +151,7 @@ final class USBCPortWatcher: ObservableObject {
     private func pinConfig(_ value: Any?) -> [String: String] {
         guard let dict = value as? [String: Any] else { return [:] }
         var result: [String: String] = [:]
-        for (k, v) in dict { result[k] = stringify(v) }
+        for (k, v) in dict { result[k] = IOKitSupport.stringify(v) }
         return result
-    }
-
-    private func hexData(_ value: Any?) -> String? {
-        guard let data = value as? Data else { return nil }
-        return data.map { String(format: "%02X", $0) }.joined(separator: " ")
-    }
-
-    private func stringify(_ value: Any) -> String {
-        switch value {
-        case let n as NSNumber: return n.stringValue
-        case let s as String: return s
-        case let d as Data: return d.map { String(format: "%02X", $0) }.joined(separator: " ")
-        case let a as [Any]: return "[" + a.map { stringify($0) }.joined(separator: ", ") + "]"
-        case let d as [String: Any]:
-            return "{" + d.map { "\($0.key): \(stringify($0.value))" }.joined(separator: ", ") + "}"
-        default: return String(describing: value)
-        }
     }
 }

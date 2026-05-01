@@ -149,7 +149,7 @@ enum PDVDO {
         default: volts = 20
         }
         let amps = current.maxAmps
-        let watts = Int((volts * amps).rounded())
+        let watts = min(Int((volts * amps).rounded()), 240)
 
         return CableVDO(
             speed: speed,

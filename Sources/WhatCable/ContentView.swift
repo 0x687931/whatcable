@@ -1,10 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var portWatcher = USBCPortWatcher()
-    @StateObject private var deviceWatcher = USBWatcher()
-    @StateObject private var powerWatcher = PowerSourceWatcher()
-    @StateObject private var pdWatcher = PDIdentityWatcher()
+    @ObservedObject private var cableStore = CableStateStore.shared
     @EnvironmentObject private var refresh: RefreshSignal
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var updates = UpdateChecker.shared
@@ -20,21 +17,10 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            portWatcher.start()
-            deviceWatcher.start()
-            powerWatcher.start()
-            pdWatcher.start()
-        }
-        .onDisappear {
-            portWatcher.stop()
-            deviceWatcher.stop()
-            powerWatcher.stop()
-            pdWatcher.stop()
+            cableStore.start()
         }
         .onChange(of: refresh.tick) { _, _ in
-            portWatcher.refresh()
-            powerWatcher.refresh()
-            pdWatcher.refresh()
+            cableStore.refresh()
         }
     }
 
@@ -46,8 +32,8 @@ struct ContentView: View {
             }
             Divider()
             let visiblePorts = settings.hideEmptyPorts
-                ? portWatcher.ports.filter { $0.connectionActive == true }
-                : portWatcher.ports
+                ? cableStore.ports.filter { $0.connectionActive == true }
+                : cableStore.ports
             if visiblePorts.isEmpty {
                 emptyState
             } else {
@@ -56,11 +42,13 @@ struct ContentView: View {
                         ForEach(visiblePorts) { port in
                             PortCard(
                                 port: port,
-                                devices: matchingDevices(for: port),
-                                powerSources: powerWatcher.sources(for: port),
-                                identities: pdWatcher.identities(for: port),
+                                powerSources: cableStore.sources(for: port),
+                                identities: cableStore.identities(for: port),
                                 showAdvanced: showAdvanced
                             )
+                        }
+                        if !cableStore.devices.isEmpty {
+                            USBDeviceList(devices: cableStore.devices)
                         }
                     }
                     .padding(12)
@@ -103,7 +91,7 @@ struct ContentView: View {
     private var footer: some View {
         HStack {
             Spacer()
-            Text("\(deviceWatcher.devices.count) USB device\(deviceWatcher.devices.count == 1 ? "" : "s")")
+            Text("\(cableStore.devices.count) USB device\(cableStore.devices.count == 1 ? "" : "s")")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text("·").font(.caption).foregroundStyle(.secondary)
@@ -131,264 +119,4 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Heuristic: USB devices' `locationID` upper byte often correlates with the
-    /// physical port. Without a perfect map, just surface all devices on the
-    /// first connected port.
-    private func matchingDevices(for port: USBCPort) -> [USBDevice] {
-        guard port.connectionActive == true else { return [] }
-        return deviceWatcher.devices
-    }
-}
-
-struct UpdateBanner: View {
-    let update: AvailableUpdate
-    @ObservedObject private var installer = Installer.shared
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "arrow.down.circle.fill")
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("WhatCable \(update.version) is available")
-                    .font(.callout).bold()
-                statusLine
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            actionButtons
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color.accentColor.opacity(0.12))
-    }
-
-    @ViewBuilder
-    private var statusLine: some View {
-        switch installer.state {
-        case .idle:
-            Text("You're on \(AppInfo.version)")
-        case .downloading:
-            Text("Downloading…")
-        case .verifying:
-            Text("Verifying signature…")
-        case .installing:
-            Text("Installing — WhatCable will relaunch")
-        case .failed(let message):
-            Text("Install failed: \(message)").foregroundStyle(.red)
-        }
-    }
-
-    @ViewBuilder
-    private var actionButtons: some View {
-        switch installer.state {
-        case .idle, .failed:
-            HStack(spacing: 6) {
-                Button("View release") {
-                    NSWorkspace.shared.open(update.url)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-
-                if update.downloadURL != nil {
-                    Button("Install update") {
-                        Installer.shared.install(update)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                }
-            }
-        case .downloading, .verifying, .installing:
-            ProgressView().controlSize(.small)
-        }
-    }
-}
-
-// MARK: - Port card
-
-struct PortCard: View {
-    let port: USBCPort
-    let devices: [USBDevice]
-    let powerSources: [PowerSource]
-    let identities: [PDIdentity]
-    let showAdvanced: Bool
-
-    var summary: PortSummary {
-        PortSummary(port: port, sources: powerSources, identities: identities)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: summary.icon)
-                    .font(.system(size: 28))
-                    .foregroundStyle(summary.iconColor)
-                    .frame(width: 36)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(port.portDescription ?? port.serviceName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(summary.headline)
-                        .font(.title3).bold()
-                    Text(summary.subtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-
-            if !summary.bullets.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(summary.bullets, id: \.self) { bullet in
-                        HStack(alignment: .top, spacing: 6) {
-                            Text("•").foregroundStyle(.secondary)
-                            Text(bullet).font(.callout)
-                            Spacer()
-                        }
-                    }
-                }
-                .padding(.leading, 48)
-            }
-
-            if !devices.isEmpty && port.connectionActive == true {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Connected device\(devices.count == 1 ? "" : "s")")
-                        .font(.caption).foregroundStyle(.secondary)
-                    ForEach(devices) { d in
-                        Text("• \(d.productName ?? "Unknown") — \(d.speedLabel)")
-                            .font(.callout)
-                    }
-                }
-                .padding(.leading, 48)
-            }
-
-            if let diag = ChargingDiagnostic(port: port, sources: powerSources, identities: identities) {
-                DiagnosticBanner(diagnostic: diag)
-                    .padding(.leading, 48)
-            }
-
-            if !powerSources.isEmpty {
-                PowerSourceList(sources: powerSources)
-                    .padding(.leading, 48)
-            }
-
-            if showAdvanced {
-                Divider()
-                AdvancedPortDetails(port: port)
-            }
-        }
-        .padding(14)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
-    }
-}
-
-struct DiagnosticBanner: View {
-    let diagnostic: ChargingDiagnostic
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: diagnostic.icon)
-                .foregroundStyle(diagnostic.isWarning ? Color.orange : Color.green)
-                .font(.callout)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(diagnostic.summary).font(.callout).bold()
-                Text(diagnostic.detail).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(10)
-        .background(
-            (diagnostic.isWarning ? Color.orange : Color.green)
-                .opacity(0.1),
-            in: RoundedRectangle(cornerRadius: 8)
-        )
-    }
-}
-
-struct PowerSourceList: View {
-    let sources: [PowerSource]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(sources) { src in
-                if !src.options.isEmpty {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(src.name) profiles")
-                            .font(.caption).foregroundStyle(.secondary)
-                        ForEach(src.options.sorted(by: { $0.voltageMV < $1.voltageMV }), id: \.self) { opt in
-                            let isWinning = opt == src.winning
-                            HStack(spacing: 6) {
-                                Image(systemName: isWinning ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(isWinning ? Color.green : Color.secondary)
-                                    .font(.caption)
-                                Text("\(opt.voltsLabel) @ \(opt.ampsLabel) — \(opt.wattsLabel)")
-                                    .font(.callout.monospacedDigit())
-                                if isWinning {
-                                    Text("active").font(.caption2).foregroundStyle(.green)
-                                }
-                                Spacer()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct AdvancedPortDetails: View {
-    let port: USBCPort
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            group("Connection") {
-                row("Active", bool(port.connectionActive))
-                row("E-marker chip", bool(port.activeCable))
-                row("Optical", bool(port.opticalCable))
-                row("USB active", bool(port.usbActive))
-                row("SuperSpeed", bool(port.superSpeedActive))
-                row("Plug events", port.plugEventCount.map(String.init) ?? "—")
-            }
-            group("Transports") {
-                row("Supported", port.transportsSupported.joined(separator: ", "))
-                row("Provisioned", port.transportsProvisioned.joined(separator: ", "))
-                row("Active", port.transportsActive.isEmpty ? "—" : port.transportsActive.joined(separator: ", "))
-            }
-            DisclosureGroup("All raw IOKit properties (\(port.rawProperties.count))") {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(port.rawProperties.sorted(by: { $0.key < $1.key }), id: \.key) { kv in
-                        HStack(alignment: .top) {
-                            Text(kv.key).font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 200, alignment: .leading)
-                            Text(kv.value).font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
-                            Spacer()
-                        }
-                    }
-                }
-                .padding(.top, 4)
-            }
-            .font(.caption)
-        }
-    }
-
-    private func group<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.caption).bold().foregroundStyle(.secondary)
-            content()
-        }
-    }
-
-    private func row(_ key: String, _ value: String) -> some View {
-        HStack {
-            Text(key).font(.caption).foregroundStyle(.secondary).frame(width: 120, alignment: .leading)
-            Text(value).font(.system(.caption, design: .monospaced))
-            Spacer()
-        }
-    }
-
-    private func bool(_ v: Bool?) -> String {
-        guard let v else { return "—" }
-        return v ? "Yes" : "No"
-    }
 }

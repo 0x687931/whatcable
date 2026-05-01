@@ -71,22 +71,15 @@ final class PDIdentityWatcher: ObservableObject {
 
     private func handleRemoved(_ iter: io_iterator_t) {
         while case let service = IOIteratorNext(iter), service != 0 {
-            var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
+            let entryID = IOKitSupport.entryID(for: service)
             identities.removeAll { $0.id == entryID }
             IOObjectRelease(service)
         }
     }
 
     private func makeIdentity(from service: io_service_t) -> PDIdentity? {
-        var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
-
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
-        }
+        let entryID = IOKitSupport.entryID(for: service)
+        guard let dict = IOKitSupport.properties(for: service) else { return nil }
 
         let endpointName = (dict["ComponentName"] as? String)
             ?? (dict["AddressDescription"] as? String)
@@ -123,8 +116,4 @@ final class PDIdentityWatcher: ObservableObject {
         )
     }
 
-    func identities(for port: USBCPort) -> [PDIdentity] {
-        guard let key = port.portKey else { return [] }
-        return identities.filter { $0.portKey == key }
-    }
 }

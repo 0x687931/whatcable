@@ -1,15 +1,13 @@
 import Foundation
-import IOKit
-import IOKit.ps
 
 /// Compares charger output, cable rating, and currently negotiated PDO to
 /// identify the bottleneck — the "why is my Mac charging slowly?" answer.
 struct ChargingDiagnostic {
     enum Bottleneck {
-        case noCharger
         case chargerLimit(chargerW: Int)
         case cableLimit(cableW: Int, chargerW: Int)
-        case macLimit(negotiatedW: Int, chargerW: Int, cableW: Int?)
+        case macLimit(negotiatedW: Int, chargerW: Int, cableW: Int)
+        case unknownCableLimit(negotiatedW: Int, chargerW: Int)
         case fine(negotiatedW: Int)
     }
 
@@ -19,10 +17,10 @@ struct ChargingDiagnostic {
 
     var icon: String {
         switch bottleneck {
-        case .noCharger: return "battery.0"
         case .chargerLimit: return "exclamationmark.triangle.fill"
         case .cableLimit: return "exclamationmark.triangle.fill"
         case .macLimit: return "questionmark.circle"
+        case .unknownCableLimit: return "questionmark.circle"
         case .fine: return "checkmark.seal.fill"
         }
     }
@@ -56,11 +54,16 @@ extension ChargingDiagnostic {
             self.bottleneck = .cableLimit(cableW: cableW, chargerW: chargerMaxW)
             self.summary = "Cable is limiting charging speed"
             self.detail = "Charger can deliver up to \(chargerMaxW)W, but this cable is only rated to carry \(cableW)W. Replace the cable to charge faster."
-        } else if let n = negotiatedW, n < chargerMaxW - 5,
-                  (cableMaxW.map { n < $0 - 5 } ?? true) {
-            self.bottleneck = .macLimit(negotiatedW: n, chargerW: chargerMaxW, cableW: cableMaxW)
-            self.summary = "Charging at \(n)W (charger can do up to \(chargerMaxW)W)"
-            self.detail = "Both the charger and cable can do more, but the Mac is currently asking for less. This is normal once the battery is mostly full, or when the system is idle."
+        } else if let n = negotiatedW, n < chargerMaxW - 5 {
+            if let cableW = cableMaxW {
+                self.bottleneck = .macLimit(negotiatedW: n, chargerW: chargerMaxW, cableW: cableW)
+                self.summary = "Charging at \(n)W (charger can do up to \(chargerMaxW)W)"
+                self.detail = "Both the charger and cable can do more, but the Mac is currently asking for less. This is normal once the battery is mostly full, or when the system is idle."
+            } else {
+                self.bottleneck = .unknownCableLimit(negotiatedW: n, chargerW: chargerMaxW)
+                self.summary = "Charging at \(n)W (charger can do up to \(chargerMaxW)W)"
+                self.detail = "This cable does not advertise its rating, so WhatCable cannot tell whether the cable or the Mac is limiting charging speed."
+            }
         } else if let n = negotiatedW {
             self.bottleneck = .fine(negotiatedW: n)
             self.summary = "Charging well at \(n)W"
@@ -70,23 +73,5 @@ extension ChargingDiagnostic {
             self.summary = "Charger advertises up to \(chargerMaxW)W"
             self.detail = "Negotiation hasn't completed yet."
         }
-    }
-}
-
-/// External power adapter info from the system. Independent of the per-port
-/// IOKit views — useful when you want to know what the Mac thinks it's getting.
-enum SystemPower {
-    struct AdapterInfo {
-        let watts: Int?
-        let isCharging: Bool?
-        let source: String?  // "AC" / "Battery"
-    }
-
-    static func currentAdapter() -> AdapterInfo? {
-        guard let info = IOPSCopyExternalPowerAdapterDetails()?.takeRetainedValue() as? [String: Any] else {
-            return AdapterInfo(watts: nil, isCharging: nil, source: nil)
-        }
-        let w = (info["Watts"] as? NSNumber)?.intValue
-        return AdapterInfo(watts: w, isCharging: nil, source: "AC")
     }
 }

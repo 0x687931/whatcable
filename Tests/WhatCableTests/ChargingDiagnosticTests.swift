@@ -105,6 +105,21 @@ final class ChargingDiagnosticTests: XCTestCase {
         XCTAssertEqual(cableW, 100)
     }
 
+    func testUnknownCableRatingDoesNotBlameMac() {
+        // 96W charger + no cable e-marker + 60W negotiated: the cable may be the limit.
+        let diag = ChargingDiagnostic(
+            port: port,
+            sources: [usbPD(maxW: 96, winningW: 60)],
+            identities: []
+        )
+        guard case .unknownCableLimit(let n, let chargerW) = diag?.bottleneck else {
+            return XCTFail("expected .unknownCableLimit, got \(String(describing: diag?.bottleneck))")
+        }
+        XCTAssertEqual(n, 60)
+        XCTAssertEqual(chargerW, 96)
+        XCTAssertTrue(diag!.detail.contains("cannot tell whether the cable or the Mac"))
+    }
+
     func testEverythingMatched() {
         // 96W charger + 100W cable + 96W winning -> .fine
         let diag = ChargingDiagnostic(

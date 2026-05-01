@@ -43,7 +43,7 @@ WhatCable reads three families of IOKit services. No entitlements, no private AP
 
 | Service | What it gives us |
 | --- | --- |
-| `AppleHPMInterfaceType10/11` | Per-port state: connection, transports, plug orientation, e-marker presence |
+| `AppleHPMInterfaceType10/11/12`, `AppleTCControllerType10` | Per-port state: connection, transports, plug orientation, e-marker presence |
 | `IOPortFeaturePowerSource` | Full PDO list from the connected source, with the live "winning" PDO |
 | `IOPortTransportComponentCCUSBPDSOP` | PD Discover Identity VDOs for SOP (port partner) and SOP' (cable e-marker) |
 
@@ -87,7 +87,7 @@ xcrun notarytool store-credentials "WhatCable-notary" \
 
 # 3. Create your .env from the template
 cp .env.example .env
-# ...and fill in DEVELOPER_ID
+# ...and fill in DEVELOPER_ID, plus NOTARY_PROFILE when you want notarisation
 ```
 
 ## Caveats

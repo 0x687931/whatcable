@@ -16,8 +16,12 @@ final class UpdateChecker: ObservableObject {
     static let shared = UpdateChecker()
 
     private nonisolated static let log = Logger(subsystem: "com.bitmoor.whatcable", category: "updates")
-    private static let endpoint = URL(string: "https://api.github.com/repos/darrylmorley/whatcable/releases/latest")!
-    private static let pollInterval: TimeInterval = 6 * 60 * 60 // 6h
+    private nonisolated static let endpoint = URL(string: "https://api.github.com/repos/darrylmorley/whatcable/releases/latest")!
+    private nonisolated static let releaseHost = "github.com"
+    private nonisolated static let releasePathPrefix = "/darrylmorley/whatcable/releases/"
+    private nonisolated static let downloadPathPrefix = "/darrylmorley/whatcable/releases/download/"
+    private nonisolated static let updateAssetName = "WhatCable.zip"
+    private nonisolated static let pollInterval: TimeInterval = 6 * 60 * 60 // 6h
 
     @Published private(set) var available: AvailableUpdate?
     @Published private(set) var isChecking = false
@@ -62,7 +66,8 @@ final class UpdateChecker: ObservableObject {
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let tag = json["tag_name"] as? String,
                       let urlString = json["html_url"] as? String,
-                      let url = URL(string: urlString) else {
+                      let url = URL(string: urlString),
+                      Self.isTrustedReleaseURL(url) else {
                     if !silent { self.showAlert(title: "Couldn't check for updates", message: "Unexpected response from GitHub.") }
                     return
                 }
@@ -70,9 +75,10 @@ final class UpdateChecker: ObservableObject {
                 let remote = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
                 let notes = json["body"] as? String
                 let downloadURL = (json["assets"] as? [[String: Any]])?
-                    .first(where: { ($0["name"] as? String)?.hasSuffix(".zip") == true })
+                    .first(where: { ($0["name"] as? String) == Self.updateAssetName })
                     .flatMap { $0["browser_download_url"] as? String }
                     .flatMap { URL(string: $0) }
+                    .flatMap { Self.isTrustedDownloadURL($0) ? $0 : nil }
 
                 if Self.isNewer(remote: remote, current: AppInfo.version) {
                     let update = AvailableUpdate(version: remote, url: url, downloadURL: downloadURL, notes: notes)
@@ -135,5 +141,18 @@ final class UpdateChecker: ObservableObject {
 
     private nonisolated static func parts(_ version: String) -> [Int] {
         version.split(separator: ".").map { Int($0) ?? 0 }
+    }
+
+    nonisolated static func isTrustedReleaseURL(_ url: URL) -> Bool {
+        url.scheme == "https"
+            && url.host == releaseHost
+            && url.path.hasPrefix(releasePathPrefix)
+    }
+
+    nonisolated static func isTrustedDownloadURL(_ url: URL) -> Bool {
+        url.scheme == "https"
+            && url.host == releaseHost
+            && url.path.hasPrefix(downloadPathPrefix)
+            && url.lastPathComponent == updateAssetName
     }
 }

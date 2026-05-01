@@ -38,12 +38,3 @@ struct PowerSource: Identifiable, Hashable {
     /// Match key joining a power source to its port.
     var portKey: String { "\(parentPortType)/\(parentPortNumber)" }
 }
-
-extension USBCPort {
-    var portKey: String? {
-        guard let n = portNumber else { return nil }
-        // PortType lives in raw properties; pull it out for matching.
-        let rawType = (rawProperties["PortType"]).flatMap { Int($0) } ?? 0x2
-        return "\(rawType)/\(n)"
-    }
-}

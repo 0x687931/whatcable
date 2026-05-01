@@ -16,6 +16,15 @@ final class Installer: ObservableObject {
         case verifying
         case installing
         case failed(String)
+
+        var canStartInstall: Bool {
+            switch self {
+            case .idle, .failed:
+                return true
+            case .downloading, .verifying, .installing:
+                return false
+            }
+        }
     }
 
     @Published private(set) var state: State = .idle
@@ -23,7 +32,7 @@ final class Installer: ObservableObject {
     private init() {}
 
     func install(_ update: AvailableUpdate) {
-        guard case .idle = state else { return }
+        guard state.canStartInstall else { return }
         guard let downloadURL = update.downloadURL else {
             state = .failed("No download asset for this release")
             return
@@ -38,7 +47,7 @@ final class Installer: ObservableObject {
                 state = .verifying
                 let extractedApp = try unzipAndLocate(zip: zipURL, in: workDir)
                 try stripQuarantine(at: extractedApp)
-                try verifySignatureMatches(new: extractedApp, current: Bundle.main.bundleURL)
+                try verifyUpdateIdentity(candidateApp: extractedApp, currentApp: Bundle.main.bundleURL)
 
                 state = .installing
                 try launchSwapScript(newApp: extractedApp, currentApp: Bundle.main.bundleURL)
@@ -63,6 +72,9 @@ final class Installer: ObservableObject {
     }
 
     private func download(from url: URL, into dir: URL) async throws -> URL {
+        guard UpdateChecker.isTrustedDownloadURL(url) else {
+            throw InstallError("Untrusted update download URL")
+        }
         let (tmpURL, response) = try await URLSession.shared.download(from: url)
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw InstallError("Download failed with HTTP \(http.statusCode)")
@@ -73,12 +85,13 @@ final class Installer: ObservableObject {
     }
 
     private func unzipAndLocate(zip: URL, in dir: URL) throws -> URL {
+        try validateZipEntries(zip)
         try run("/usr/bin/unzip", ["-q", zip.path, "-d", dir.path])
 
-        // Find the first .app at the top of `dir`.
         let contents = try FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
-        guard let app = contents.first(where: { $0.pathExtension == "app" }) else {
-            throw InstallError("No .app found inside the downloaded zip")
+        let apps = contents.filter { $0.pathExtension == "app" }
+        guard apps.count == 1, let app = apps.first else {
+            throw InstallError("Expected exactly one .app inside the downloaded zip")
         }
         return app
     }
@@ -89,24 +102,85 @@ final class Installer: ObservableObject {
         _ = try? run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", url.path])
     }
 
-    private func verifySignatureMatches(new: URL, current: URL) throws {
-        let newTeam = try teamIdentifier(of: new)
-        let currentTeam = try teamIdentifier(of: current)
-        if newTeam != currentTeam {
-            throw InstallError("Signature mismatch: refusing to install (current \(currentTeam), new \(newTeam))")
+    private func verifyUpdateIdentity(candidateApp: URL, currentApp: URL) throws {
+        try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", candidateApp.path])
+
+        let candidateBundle = try bundleIdentity(of: candidateApp)
+        let currentBundle = try bundleIdentity(of: currentApp)
+        guard candidateBundle == currentBundle else {
+            throw InstallError("Bundle identity mismatch: refusing to install")
         }
-        // Also verify the new bundle's signature is structurally valid.
-        try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", new.path])
+
+        let candidateSignature = try signatureIdentity(of: candidateApp)
+        let currentSignature = try signatureIdentity(of: currentApp)
+        guard candidateSignature == currentSignature else {
+            throw InstallError("Signature identity mismatch: refusing to install")
+        }
     }
 
-    private func teamIdentifier(of app: URL) throws -> String {
-        let output = try captureOutput("/usr/bin/codesign", ["-dvv", app.path])
+    private func validateZipEntries(_ zip: URL) throws {
+        let output = try captureOutput("/usr/bin/unzip", ["-Z1", zip.path])
         for line in output.split(separator: "\n") {
-            if line.hasPrefix("TeamIdentifier=") {
-                return String(line.dropFirst("TeamIdentifier=".count))
+            let path = String(line)
+            let components = path.split(separator: "/", omittingEmptySubsequences: false)
+            if path.hasPrefix("/") || components.contains("..") {
+                throw InstallError("Unsafe path in update zip: \(path)")
             }
         }
-        throw InstallError("Could not read TeamIdentifier from \(app.lastPathComponent)")
+    }
+
+    private struct BundleIdentity: Equatable {
+        let bundleIdentifier: String
+        let executableName: String
+        let bundleName: String
+    }
+
+    private func bundleIdentity(of app: URL) throws -> BundleIdentity {
+        guard let bundle = Bundle(url: app),
+              let bundleIdentifier = bundle.bundleIdentifier,
+              let executableName = bundle.object(forInfoDictionaryKey: "CFBundleExecutable") as? String,
+              let bundleName = bundle.object(forInfoDictionaryKey: "CFBundleName") as? String else {
+            throw InstallError("Could not read bundle identity from \(app.lastPathComponent)")
+        }
+        return BundleIdentity(
+            bundleIdentifier: bundleIdentifier,
+            executableName: executableName,
+            bundleName: bundleName
+        )
+    }
+
+    private struct SignatureIdentity: Equatable {
+        let identifier: String
+        let teamIdentifier: String
+        let designatedRequirement: String
+    }
+
+    private func signatureIdentity(of app: URL) throws -> SignatureIdentity {
+        let output = try captureOutput("/usr/bin/codesign", ["-dvv", "-r-", app.path])
+        var identifier: String?
+        var teamIdentifier: String?
+        var requirement: String?
+
+        for rawLine in output.split(separator: "\n") {
+            let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            if line.hasPrefix("Identifier=") {
+                identifier = String(line.dropFirst("Identifier=".count))
+            } else if line.hasPrefix("TeamIdentifier=") {
+                teamIdentifier = String(line.dropFirst("TeamIdentifier=".count))
+            } else if line.hasPrefix("designated =>") {
+                requirement = String(line.dropFirst("designated =>".count))
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+
+        guard let identifier, let teamIdentifier, let requirement else {
+            throw InstallError("Could not read signature identity from \(app.lastPathComponent)")
+        }
+        return SignatureIdentity(
+            identifier: identifier,
+            teamIdentifier: teamIdentifier,
+            designatedRequirement: requirement
+        )
     }
 
     private func launchSwapScript(newApp: URL, currentApp: URL) throws {
