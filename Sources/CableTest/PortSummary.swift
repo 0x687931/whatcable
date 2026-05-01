@@ -113,7 +113,12 @@ extension PortSummary {
         if let partner = identities.first(where: { $0.endpoint == .sop }),
            let header = partner.idHeader {
             let kind = header.ufpProductType != .undefined ? header.ufpProductType.label : header.dfpProductType.label
-            bullets.append("Connected device: \(kind) (vendor 0x\(String(format: "%04X", partner.vendorID)))")
+            bullets.append("Connected device: \(kind) — \(VendorDB.label(for: partner.vendorID))")
+        }
+
+        // Cable e-marker vendor (SOP'): who made the cable
+        if let cable = cableEmarker, cable.vendorID != 0 {
+            bullets.append("Cable made by \(VendorDB.label(for: cable.vendorID))")
         }
 
         // Plug orientation

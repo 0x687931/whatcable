@@ -1,44 +1,58 @@
 # WhatCable
 
-A small macOS menu bar app that tells you, in plain English, what each USB-C cable plugged into your Mac can actually do.
+> **What can this USB-C cable actually do?**
 
-> What can this USB-C cable actually do?
+A small macOS menu bar app that tells you, in plain English, what each USB-C cable plugged into your Mac can actually do — and **why your Mac might be charging slowly**.
 
-USB-C cables are notoriously hard to tell apart at a glance — the same connector covers everything from USB 2.0 charge-only cables to 240W / 40 Gbps Thunderbolt 4. macOS already exposes most of the relevant info via IOKit; WhatCable surfaces it in a friendly menu bar popover.
+USB-C is the worst kind of standard: identical-looking connectors covering everything from a USB 2.0 charge-only cable to a 240W / 40 Gbps Thunderbolt 4 cable. macOS already exposes the relevant info via IOKit; WhatCable surfaces it as a friendly menu bar popover.
+
+[![Latest release](https://img.shields.io/github/v/release/darrylmorley/whatcable)](https://github.com/darrylmorley/whatcable/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://github.com/darrylmorley/whatcable)
 
 ## What it shows
 
-For each USB-C / MagSafe port:
+Per port, in plain English:
 
 - **At-a-glance headline** — Thunderbolt / USB4, USB device, Charging only, Slow USB / charge-only cable, Nothing connected
-- **Cable speed** decoded from the e-marker chip (USB 2.0, 5/10/20/40/80 Gbps)
-- **Cable power rating** (3 A or 5 A, max 60 W / 100 W / 240 W) — what the cable itself can carry
-- **Charger output** — every PDO the connected charger advertises (e.g. 5V/9V/12V/15V/20V), with the currently negotiated voltage highlighted live
-- **Connected device identity** — vendor and product type, decoded from the partner's PD Discover Identity response
+- **Charging diagnostic** — when something's plugged in, a banner identifies the bottleneck:
+  - *"Cable is limiting charging speed"* (cable rated below the charger)
+  - *"Charging at 30W (charger can do up to 96W)"* (Mac is asking for less, e.g. battery near full)
+  - *"Charging well at 96W"* (everything matches)
+- **Cable e-marker info** — the cable's actual speed (USB 2.0, 5 / 10 / 20 / 40 / 80 Gbps), current rating (3 A / 5 A → up to 60W / 100W / 240W), and the chip's vendor
+- **Charger PDO list** — every voltage profile the charger advertises (5V / 9V / 12V / 15V / 20V…) with the currently negotiated profile highlighted in real time
+- **Connected device identity** — vendor name and product type, decoded from the PD Discover Identity response
 - **Active transports** — USB 2 / USB 3 / Thunderbolt / DisplayPort
-- **A "Show technical details" toggle** that reveals the underlying IOKit properties for engineers
+- **"Show technical details"** toggle revealing the underlying IOKit properties for engineers
 
 Right-click the menu bar icon for **Refresh**, **About**, and **Quit**.
 
+## Install
+
+Download the latest `WhatCable.zip` from the [Releases page](https://github.com/darrylmorley/whatcable/releases/latest), unzip, and drag `WhatCable.app` to `/Applications`.
+
+The app is universal (Apple silicon + Intel), signed with a Developer ID, and notarised by Apple — no Gatekeeper warnings.
+
+Requires macOS 14 (Sonoma) or later.
+
 ## How it works
 
-WhatCable reads three families of IOKit services, no entitlements or private APIs required:
+WhatCable reads three families of IOKit services. No entitlements, no private APIs, no helper daemons:
 
 | Service | What it gives us |
 | --- | --- |
 | `AppleHPMInterfaceType10/11` | Per-port state: connection, transports, plug orientation, e-marker presence |
-| `IOPortFeaturePowerSource` | Full PDO list from the connected source, with live "winning" PDO |
-| `IOPortTransportComponentCCUSBPDSOP` | PD Discover Identity VDOs for SOP (partner) and SOP' (cable e-marker) |
+| `IOPortFeaturePowerSource` | Full PDO list from the connected source, with the live "winning" PDO |
+| `IOPortTransportComponentCCUSBPDSOP` | PD Discover Identity VDOs for SOP (port partner) and SOP' (cable e-marker) |
 
-The cable speed and power decoding follows the USB Power Delivery 3.x spec.
+Cable speed and power decoding follow the USB Power Delivery 3.x spec.
 
-## Run from source
+## Build from source
 
 ```bash
 swift run WhatCable
 ```
 
-Requires macOS 14+ and Swift 5.9 (Xcode 15+).
+Requires Swift 5.9 (Xcode 15+).
 
 ## Build a distributable .app
 
@@ -53,43 +67,40 @@ Produces a universal `dist/WhatCable.app` (arm64 + x86_64) and `dist/WhatCable.z
 | Configuration | Result |
 | --- | --- |
 | No `.env` | Ad-hoc signed. Works locally; Gatekeeper warns on other Macs. |
-| `.env` with `DEVELOPER_ID` | Developer ID signed + hardened runtime. Suitable for limited distribution. |
+| `.env` with `DEVELOPER_ID` | Developer ID signed + hardened runtime. |
 | `.env` with `DEVELOPER_ID` + `NOTARY_PROFILE` | Full notarisation + stapled ticket. Gatekeeper-clean for everyone. |
 
 **One-time setup for full notarisation:**
 
 ```bash
-# Find your signing identity
+# 1. Find your signing identity
 security find-identity -v -p codesigning
 
-# Store notarytool credentials in the keychain
+# 2. Store notarytool credentials in the keychain
 xcrun notarytool store-credentials "WhatCable-notary" \
     --apple-id "you@example.com" \
     --team-id "ABCDE12345" \
-    --password "<app-specific-password>"   # from appleid.apple.com
+    --password "<app-specific-password>"   # generate at appleid.apple.com
 
-# Then create .env from the template
+# 3. Create your .env from the template
 cp .env.example .env
 # ...and fill in DEVELOPER_ID
-```
-
-To install locally:
-
-```bash
-cp -R dist/WhatCable.app /Applications/
 ```
 
 ## Caveats
 
 - **Cable e-marker info only appears for cables that carry one.** Most USB-C cables under 60 W are unmarked. Any Thunderbolt / USB4 cable, any 5 A / 100 W+ cable, and most quality data cables will be e-marked.
-- **PD spec coverage:** decoder targets PD 3.0 / 3.1. PD 3.2 EPR variants may need tweaks once we see real data.
-- **Vendor IDs are shown numerically** — there's no bundled USB-IF vendor name database (yet).
+- **PD spec coverage:** the decoder targets PD 3.0 / 3.1. PD 3.2 EPR variants may need tweaks once we see real data.
+- **Vendor name lookup is bundled but not exhaustive** — common cable, charger, hub, dock, and storage vendors are recognised; others fall back to the hex VID.
 - **macOS only.** iOS sandboxing makes USB-C e-marker access much harder.
+- **Not on the App Store.** App Sandbox blocks the IOKit reads we depend on. Direct distribution is the right home for this kind of utility.
 
-## Releases
+## Contributing
 
-Latest builds are on the [Releases page](https://github.com/darrylmorley/whatcable/releases).
+Issues and PRs welcome. The code is small and tries to stay readable — start at [`Sources/CableTest/ContentView.swift`](Sources/CableTest/ContentView.swift) for the UI, [`PortSummary.swift`](Sources/CableTest/PortSummary.swift) for the plain-English logic, or [`PDVDO.swift`](Sources/CableTest/PDVDO.swift) for the bit-twiddling.
 
 ## Credits
 
-Built by Bitmoor Ltd.
+Built by [Bitmoor Ltd](https://github.com/darrylmorley).
+
+Inspired by every time someone has asked "*is this cable any good?*" and the answer required a screwdriver and a spec sheet.
