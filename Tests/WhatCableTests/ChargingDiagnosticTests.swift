@@ -70,6 +70,33 @@ final class ChargingDiagnosticTests: XCTestCase {
 
     // MARK: - Cases
 
+    /// Same shape as `port` but with ConnectionActive=false. Reproduces the
+    /// "Charging well at 94W" bug on a disconnected MagSafe port: the
+    /// PowerSource node still exposes a winning PDO with cached values, and
+    /// without this guard we would still report active charging.
+    private var inactiveMagSafePort: USBCPort {
+        USBCPort(
+            id: 1, serviceName: "Port-MagSafe 3@1", className: "AppleHPMInterfaceType11",
+            portDescription: nil, portTypeDescription: "MagSafe 3", portNumber: 1,
+            connectionActive: false,
+            activeCable: nil, opticalCable: nil, usbActive: nil, superSpeedActive: nil,
+            usbModeType: nil, usbConnectString: nil,
+            transportsSupported: [], transportsActive: [], transportsProvisioned: [],
+            plugOrientation: nil, plugEventCount: nil, connectionCount: nil,
+            overcurrentCount: nil, pinConfiguration: [:], powerCurrentLimits: [],
+            firmwareVersion: nil, bootFlagsHex: nil, rawProperties: [:]
+        )
+    }
+
+    func testReturnsNilOnInactivePortWithStalePDO() {
+        let diag = ChargingDiagnostic(
+            port: inactiveMagSafePort,
+            sources: [usbPD(maxW: 94, winningW: 94)],
+            identities: []
+        )
+        XCTAssertNil(diag)
+    }
+
     func testReturnsNilWithoutUSBPDSource() {
         let diag = ChargingDiagnostic(port: port, sources: [], identities: [])
         XCTAssertNil(diag)

@@ -38,8 +38,14 @@ struct ChargingDiagnostic {
 extension ChargingDiagnostic {
     init?(port: USBCPort, sources: [PowerSource], identities: [PDIdentity]) {
         guard let usbPD = sources.first(where: { $0.name == "USB-PD" }) else {
-            return nil // No PD source on this port — no diagnostic to make.
+            return nil // No PD source on this port, no diagnostic to make.
         }
+        // MagSafe (and at least some USB-C ports) keep the last negotiated
+        // PDO around as cached data even after the charger is unplugged, so
+        // a port that is actually idle still looks like it is drawing ~94W.
+        // Gate on the port-level ConnectionActive flag instead of trusting
+        // the PowerSource node alone.
+        guard port.connectionActive == true else { return nil }
 
         let chargerMaxW = Int((Double(usbPD.maxPowerMW) / 1000).rounded())
         let negotiatedW = usbPD.winning.map { Int((Double($0.maxPowerMW) / 1000).rounded()) }
