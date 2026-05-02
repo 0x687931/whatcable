@@ -13,6 +13,7 @@ final class AppSettings: ObservableObject {
     private enum Keys {
         static let notifyOnChanges = "notifyOnChanges"
         static let hideEmptyPorts = "hideEmptyPorts"
+        static let showTechnicalDetails = "showTechnicalDetails"
         static let useMenuBarMode = "useMenuBarMode"
     }
 
@@ -40,6 +41,13 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    @Published var showTechnicalDetails: Bool {
+        didSet {
+            guard showTechnicalDetails != oldValue else { return }
+            UserDefaults.standard.set(showTechnicalDetails, forKey: Keys.showTechnicalDetails)
+        }
+    }
+
     /// When true (default), WhatCable lives in the menu bar with no Dock
     /// icon. When false, it runs as a regular Dock app with a window.
     @Published var useMenuBarMode: Bool {
@@ -55,6 +63,7 @@ final class AppSettings: ObservableObject {
         // Notifications default off — opt in to avoid noise.
         self.notifyOnChanges = UserDefaults.standard.bool(forKey: Keys.notifyOnChanges)
         self.hideEmptyPorts = UserDefaults.standard.bool(forKey: Keys.hideEmptyPorts)
+        self.showTechnicalDetails = UserDefaults.standard.bool(forKey: Keys.showTechnicalDetails)
         // Menu bar mode is the default; UserDefaults returns false for unset
         // bool keys, so explicitly check presence.
         if UserDefaults.standard.object(forKey: Keys.useMenuBarMode) == nil {

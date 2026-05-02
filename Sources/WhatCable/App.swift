@@ -137,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 symbolName: "bolt.fill",
                 symbolColor: .systemGreen,
                 help: "Power is connected",
-                accessibilityLabel: "\(AppInfo.name): charging",
+                accessibilityLabel: "\(AppInfo.name): external power",
                 accessibilityValue: "Power is connected"
             )
         }
@@ -323,6 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if event.type == .rightMouseUp {
             showMenu(from: sender)
         } else {
+            Self.refreshSignal.optionHeld = event.modifierFlags.contains(.option)
             togglePanel(from: sender)
         }
     }
@@ -369,6 +370,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func hideMenuPanel() {
         menuPanel?.orderOut(nil)
         statusItem?.button?.highlight(false)
+        Self.refreshSignal.optionHeld = false
         removeEventMonitors()
     }
 
@@ -469,6 +471,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
 final class RefreshSignal: ObservableObject {
     @Published var tick: Int = 0
+    /// Set for the lifetime of an option-click-opened panel to reveal details without changing settings.
+    @Published var optionHeld = false
+
     func bump() { tick &+= 1 }
 }
 

@@ -12,14 +12,15 @@ final class USBCPortWatcher: ObservableObject {
     // ports — those have no physical connector and just confuse the UI.
     // The exact IOKit class for a USB-C port node varies by chip
     // generation. M3-era machines expose `AppleHPMInterfaceType10/11/12`;
-    // M1 and M2 expose `AppleTCControllerType10`. We register against
+    // M1 and M2 expose `AppleTCControllerType10/11`. We register against
     // both. The `PortTypeDescription` / `Port-` filter in `makePort`
     // drops anything that isn't a real physical port.
     private static let candidateClasses = [
         "AppleHPMInterfaceType10",
         "AppleHPMInterfaceType11",
         "AppleHPMInterfaceType12",
-        "AppleTCControllerType10"
+        "AppleTCControllerType10",
+        "AppleTCControllerType11"
     ]
 
     private var notifyPort: IONotificationPortRef?

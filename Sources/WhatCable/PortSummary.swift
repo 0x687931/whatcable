@@ -154,12 +154,12 @@ extension PortSummary {
             self.subtitle = "Only USB 2.0 is active. If you expected high speed, the cable may not support it."
         } else if usbPD != nil {
             self.status = .charging
-            self.headline = "Charging" + chargerSuffix
-            self.subtitle = "Power is flowing. No data connection."
+            self.headline = "Power connected" + chargerSuffix
+            self.subtitle = "Power is available. No data connection."
         } else if active.isEmpty && supported.contains("USB2") {
             self.status = .charging
-            self.headline = "Charging only"
-            self.subtitle = "Power is flowing but no data link is established."
+            self.headline = "Power only"
+            self.subtitle = "Power is available but no data link is established."
         } else {
             self.status = .unknown
             self.headline = "Connected"

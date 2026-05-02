@@ -6,13 +6,22 @@ struct ContentView: View {
     @EnvironmentObject private var refresh: RefreshSignal
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var updates = UpdateChecker.shared
-    @State private var showAdvanced = false
     @State private var showSettings = false
+
+    private var showAdvanced: Bool {
+        settings.showTechnicalDetails || refresh.optionHeld
+    }
+
+    private var idlePortsCopy: String {
+        let count = cableStore.ports.count
+        let subject = count == 1 ? "port is" : "ports are"
+        return "\(count) \(subject) idle. Turn off Hide empty ports in Settings to show idle ports."
+    }
 
     var body: some View {
         Group {
             if showSettings {
-                SettingsView(showAdvanced: $showAdvanced, dismiss: { showSettings = false })
+                SettingsView(dismiss: { showSettings = false })
             } else {
                 mainContent
             }
@@ -40,7 +49,11 @@ struct ContentView: View {
                 ? cableStore.ports.filter { $0.connectionActive == true }
                 : cableStore.ports
             if visiblePorts.isEmpty {
-                emptyState
+                if cableStore.ports.isEmpty {
+                    noPortsState
+                } else {
+                    nothingConnectedState
+                }
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
@@ -131,14 +144,31 @@ struct ContentView: View {
         .padding(.bottom, 8)
     }
 
-    private var emptyState: some View {
+    private var noPortsState: some View {
         VStack(spacing: 8) {
             Image(systemName: "powerplug")
                 .font(.system(size: 24))
                 .foregroundStyle(.tertiary)
             Text("No USB-C ports")
                 .font(.system(size: 22, weight: .medium))
-            Text("Plug a cable in to see what it can do.")
+            Text("No port-controller services were found. Try Refresh, or check USB in System Information.")
+                .font(.caption)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 48)
+    }
+
+    private var nothingConnectedState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "cable.connector.slash")
+                .font(.system(size: 24))
+                .foregroundStyle(.tertiary)
+            Text("Nothing connected")
+                .font(.system(size: 22, weight: .medium))
+            Text(idlePortsCopy)
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

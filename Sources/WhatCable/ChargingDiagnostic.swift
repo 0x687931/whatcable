@@ -38,6 +38,9 @@ extension ChargingDiagnostic {
         guard let usbPD = sources.first(where: { $0.name == "USB-PD" }) else {
             return nil // No PD source on this port — no diagnostic to make.
         }
+        guard port.connectionActive == true else {
+            return nil // IOKit can retain stale PDOs after a cable is unplugged.
+        }
 
         let chargerMaxW = Int((Double(usbPD.maxPowerMW) / 1000).rounded())
         let negotiatedW = usbPD.winning.map { Int((Double($0.maxPowerMW) / 1000).rounded()) }
@@ -57,17 +60,17 @@ extension ChargingDiagnostic {
         } else if let n = negotiatedW, n < chargerMaxW - 5 {
             if let cableW = cableMaxW {
                 self.bottleneck = .macLimit(negotiatedW: n, chargerW: chargerMaxW, cableW: cableW)
-                self.summary = "Charging at \(n)W (charger can do up to \(chargerMaxW)W)"
-                self.detail = "Both the charger and cable can do more, but the Mac is currently asking for less. This is normal once the battery is mostly full, or when the system is idle."
+                self.summary = "Power negotiated at \(n)W (charger can offer \(chargerMaxW)W)"
+                self.detail = "Both the charger and cable can offer more, but the Mac is currently negotiating a lower power profile. This can be normal when the battery is full or nearly full, or when the system does not need more power."
             } else {
                 self.bottleneck = .unknownCableLimit(negotiatedW: n, chargerW: chargerMaxW)
-                self.summary = "Charging at \(n)W (charger can do up to \(chargerMaxW)W)"
-                self.detail = "This cable does not advertise its rating, so WhatCable cannot tell whether the cable or the Mac is limiting charging speed."
+                self.summary = "Power negotiated at \(n)W (charger can offer \(chargerMaxW)W)"
+                self.detail = "This cable does not advertise its rating, so WhatCable cannot tell whether the cable or the Mac is limiting available charging power."
             }
         } else if let n = negotiatedW {
             self.bottleneck = .fine(negotiatedW: n)
-            self.summary = "Charging well at \(n)W"
-            self.detail = "Charger and cable are well-matched."
+            self.summary = "Power negotiated at \(n)W"
+            self.detail = "Charger and cable are well-matched. This is the available USB-PD power; macOS may still show Fully Charged when the battery is not drawing it."
         } else {
             self.bottleneck = .chargerLimit(chargerW: chargerMaxW)
             self.summary = "Charger advertises up to \(chargerMaxW)W"

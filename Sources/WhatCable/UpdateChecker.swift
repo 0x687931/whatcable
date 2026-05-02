@@ -29,6 +29,7 @@ final class UpdateChecker: ObservableObject {
 
     private var timer: Timer?
     private var notifiedVersion: String?
+    private var pendingVisibleCheck = false
 
     private init() {}
 
@@ -42,7 +43,11 @@ final class UpdateChecker: ObservableObject {
     /// Manually trigger a check. When `silent` is false, surfaces an alert
     /// for the "no update" case so the user gets feedback from the menu item.
     func check(silent: Bool) {
-        guard !isChecking else { return }
+        if isChecking {
+            if !silent { pendingVisibleCheck = true }
+            return
+        }
+        pendingVisibleCheck = !silent
         isChecking = true
 
         var request = URLRequest(url: Self.endpoint)
@@ -55,10 +60,12 @@ final class UpdateChecker: ObservableObject {
                 guard let self else { return }
                 self.isChecking = false
                 self.lastCheck = Date()
+                let visible = self.pendingVisibleCheck
+                self.pendingVisibleCheck = false
 
                 if let error {
                     Self.log.error("Update check failed: \(error.localizedDescription, privacy: .public)")
-                    if !silent { self.showAlert(title: "Couldn't check for updates", message: error.localizedDescription) }
+                    if visible { self.showAlert(title: "Couldn't check for updates", message: error.localizedDescription) }
                     return
                 }
 
@@ -68,7 +75,7 @@ final class UpdateChecker: ObservableObject {
                       let urlString = json["html_url"] as? String,
                       let url = URL(string: urlString),
                       Self.isTrustedReleaseURL(url) else {
-                    if !silent { self.showAlert(title: "Couldn't check for updates", message: "Unexpected response from GitHub.") }
+                    if visible { self.showAlert(title: "Couldn't check for updates", message: "Unexpected response from GitHub.") }
                     return
                 }
 
@@ -89,7 +96,7 @@ final class UpdateChecker: ObservableObject {
                     }
                 } else {
                     self.available = nil
-                    if !silent {
+                    if visible {
                         self.showAlert(
                             title: "You're up to date",
                             message: "WhatCable \(AppInfo.version) is the latest version."

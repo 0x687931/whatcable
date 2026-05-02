@@ -1,11 +1,8 @@
 import SwiftUI
 
 /// Settings panel shown in place of the main popover content. Pushes a
-/// "Done" header and groups toggles by purpose. `showAdvanced` is owned
-/// by `ContentView` (ephemeral, resets between sessions) so we take it
-/// as a binding; everything else lives on `AppSettings`.
+/// "Done" header and groups toggles by purpose.
 struct SettingsView: View {
-    @Binding var showAdvanced: Bool
     let dismiss: () -> Void
 
     @ObservedObject private var settings = AppSettings.shared
@@ -17,7 +14,7 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     section("Display") {
-                        Toggle("Show technical details", isOn: $showAdvanced)
+                        Toggle("Show technical details", isOn: $settings.showTechnicalDetails)
                         Toggle("Hide empty ports", isOn: $settings.hideEmptyPorts)
                     }
                     section("Behavior") {

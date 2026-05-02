@@ -35,6 +35,36 @@ final class ChargingDiagnosticTests: XCTestCase {
         )
     }
 
+    private var inactiveMagSafePort: USBCPort {
+        USBCPort(
+            id: 2,
+            serviceName: "Port-MagSafe 3@1",
+            className: "AppleHPMInterfaceType11",
+            portDescription: nil,
+            portTypeDescription: "MagSafe 3",
+            portNumber: 1,
+            connectionActive: false,
+            activeCable: nil,
+            opticalCable: nil,
+            usbActive: nil,
+            superSpeedActive: nil,
+            usbModeType: nil,
+            usbConnectString: nil,
+            transportsSupported: [],
+            transportsActive: [],
+            transportsProvisioned: [],
+            plugOrientation: nil,
+            plugEventCount: nil,
+            connectionCount: nil,
+            overcurrentCount: nil,
+            pinConfiguration: [:],
+            powerCurrentLimits: [],
+            firmwareVersion: nil,
+            bootFlagsHex: nil,
+            rawProperties: [:]
+        )
+    }
+
     /// Build a USB-PD source advertising up to `maxW` and currently negotiating `winningW`.
     private func usbPD(maxW: Int, winningW: Int) -> PowerSource {
         let winning = PowerOption(voltageMV: 20_000, maxCurrentMA: winningW * 50, maxPowerMW: winningW * 1000)
@@ -72,6 +102,15 @@ final class ChargingDiagnosticTests: XCTestCase {
 
     func testReturnsNilWithoutUSBPDSource() {
         let diag = ChargingDiagnostic(port: port, sources: [], identities: [])
+        XCTAssertNil(diag)
+    }
+
+    func testReturnsNilOnInactivePortWithStalePDO() {
+        let diag = ChargingDiagnostic(
+            port: inactiveMagSafePort,
+            sources: [usbPD(maxW: 94, winningW: 94)],
+            identities: []
+        )
         XCTAssertNil(diag)
     }
 
@@ -132,6 +171,8 @@ final class ChargingDiagnosticTests: XCTestCase {
         }
         XCTAssertEqual(n, 96)
         XCTAssertFalse(diag!.isWarning)
+        XCTAssertEqual(diag!.summary, "Power negotiated at 96W")
+        XCTAssertFalse(diag!.summary.localizedCaseInsensitiveContains("charging well"))
     }
 
     func testNoCableEmarker_FineIfMatched() {

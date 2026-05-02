@@ -112,7 +112,7 @@ struct PortCard: View {
             case .unknownCableLimit:
                 return "Cable not rated"
             case .fine:
-                return "Charging well"
+                return "Power looks good"
             case .chargerLimit:
                 return "Checking charger"
             }
@@ -121,7 +121,7 @@ struct PortCard: View {
         case .empty:
             return "Empty"
         case .charging:
-            return "Charging"
+            return "Power connected"
         case .dataDevice:
             return summary.headline.contains("Slow") ? "Slow USB" : "USB device"
         case .thunderboltCable:
