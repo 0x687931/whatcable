@@ -104,6 +104,8 @@ Issues and PRs welcome. The code is small and tries to stay readable — start a
 
 ## Credits
 
-Built by [Darryl Morley](https://github.com/darrylmorley).
+Built by WhatCable contributors.
+
+Based on the original [WhatCable](https://github.com/darrylmorley/whatcable) by [Darryl Morley](https://github.com/darrylmorley), licensed under the MIT License.
 
 Inspired by every time someone has asked "*is this cable any good?*".

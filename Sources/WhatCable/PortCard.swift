@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct PortCard: View {
+    private static let tileHeight: CGFloat = 154
+
     let port: USBCPort
     let powerSources: [PowerSource]
     let identities: [PDIdentity]
@@ -27,19 +29,24 @@ struct PortCard: View {
                 .font(.system(size: 22, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(summary.status == .empty ? .tertiary : .primary)
-                .lineLimit(2)
+                .lineLimit(2, reservesSpace: true)
                 .minimumScaleFactor(0.75)
 
-            if let tileContext {
-                Text(tileContext)
-                    .font(.system(size: 12))
-                    .monospacedDigit()
-                    .foregroundStyle(summary.status == .empty ? .tertiary : .secondary)
-                    .lineLimit(2, reservesSpace: true)
-            }
+            Text(tileContext ?? " ")
+                .font(.system(size: 12))
+                .monospacedDigit()
+                .foregroundStyle(summary.status == .empty ? .tertiary : .secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .opacity(tileContext == nil ? 0 : 1)
         }
-        .frame(maxWidth: .infinity, minHeight: 122, alignment: .topLeading)
         .padding(12)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: Self.tileHeight,
+            maxHeight: Self.tileHeight,
+            alignment: .topLeading
+        )
         .background(tileBackground, in: RoundedRectangle(cornerRadius: 10))
     }
 

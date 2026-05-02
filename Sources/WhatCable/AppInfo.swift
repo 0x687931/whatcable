@@ -8,7 +8,9 @@ enum AppInfo {
         // which has no bundled Info.plist.
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "dev"
     }()
-    static let credit = "Darryl Morley"
+    static let credit = "WhatCable contributors"
+    static let upstreamCredit = "Darryl Morley"
+    static let upstreamURL = "https://github.com/darrylmorley/whatcable"
     static let tagline = "What can this USB-C cable actually do?"
     static let copyright = "© \(Calendar.current.component(.year, from: Date())) \(credit)"
 }

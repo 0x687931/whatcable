@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private static let panelWidth: CGFloat = 320
     private static let fallbackPanelHeight: CGFloat = 420
     private static let screenPadding: CGFloat = 8
+    private let cableStore = CableStateStore.shared
 
     // Menu bar mode
     private var statusItem: NSStatusItem?
@@ -36,9 +37,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         ProcessInfo.processInfo.setValue(AppInfo.name, forKey: "processName")
+        if let appIcon = Self.appIconImage() {
+            NSApp.applicationIconImage = appIcon
+        }
 
         NotificationManager.shared.start()
         UpdateChecker.shared.start()
+        observeCableStateForStatusItem()
 
         applyDisplayMode(menuBar: AppSettings.shared.useMenuBarMode)
 
@@ -78,13 +83,126 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if statusItem == nil {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             if let button = item.button {
-                button.image = NSImage(systemSymbolName: "cable.connector", accessibilityDescription: AppInfo.name)
                 button.target = self
                 button.action = #selector(handleClick(_:))
                 button.sendAction(on: [.leftMouseUp, .rightMouseUp])
             }
             statusItem = item
+            updateStatusItemAppearance()
         }
+    }
+
+    private func observeCableStateForStatusItem() {
+        Publishers.CombineLatest4(
+            cableStore.$ports,
+            cableStore.$sources,
+            cableStore.$identities,
+            cableStore.$devices
+        )
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] _ in self?.updateStatusItemAppearance() }
+        .store(in: &cancellables)
+    }
+
+    private func updateStatusItemAppearance() {
+        guard let button = statusItem?.button else { return }
+        let state = currentMenuBarState()
+
+        button.image = Self.coloredSymbol(
+            state.symbolName,
+            color: state.symbolColor,
+            accessibilityDescription: state.accessibilityLabel,
+            pointSize: 15,
+            weight: .semibold
+        )
+        button.contentTintColor = nil
+        button.toolTip = state.help
+        button.setAccessibilityLabel(state.accessibilityLabel)
+        button.setAccessibilityValue(state.accessibilityValue)
+    }
+
+    private func currentMenuBarState() -> MenuBarState {
+        let activePorts = cableStore.ports.filter { $0.connectionActive == true }
+        if let warning = activePorts.compactMap(firstWarningDiagnostic(for:)).first {
+            return MenuBarState(
+                symbolName: "exclamationmark.triangle.fill",
+                symbolColor: .systemOrange,
+                help: warning.summary,
+                accessibilityLabel: "\(AppInfo.name): charging issue",
+                accessibilityValue: warning.summary
+            )
+        }
+        if activePorts.contains(where: hasPowerSource) {
+            return MenuBarState(
+                symbolName: "bolt.fill",
+                symbolColor: .systemGreen,
+                help: "Power is connected",
+                accessibilityLabel: "\(AppInfo.name): charging",
+                accessibilityValue: "Power is connected"
+            )
+        }
+        if !activePorts.isEmpty || !cableStore.devices.isEmpty {
+            return MenuBarState(
+                symbolName: "cable.connector",
+                symbolColor: .controlAccentColor,
+                help: "USB-C device connected",
+                accessibilityLabel: "\(AppInfo.name): device connected",
+                accessibilityValue: "USB-C device connected"
+            )
+        }
+        return MenuBarState(
+            symbolName: "powerplug",
+            symbolColor: .secondaryLabelColor,
+            help: "No USB-C device connected",
+            accessibilityLabel: "\(AppInfo.name): idle",
+            accessibilityValue: "No USB-C device connected"
+        )
+    }
+
+    private func firstWarningDiagnostic(for port: USBCPort) -> ChargingDiagnostic? {
+        guard let diagnostic = ChargingDiagnostic(
+            port: port,
+            sources: cableStore.sources(for: port),
+            identities: cableStore.identities(for: port)
+        ), diagnostic.isWarning else {
+            return nil
+        }
+        return diagnostic
+    }
+
+    private func hasPowerSource(for port: USBCPort) -> Bool {
+        !cableStore.sources(for: port).isEmpty
+    }
+
+    private static func coloredSymbol(
+        _ symbolName: String,
+        color: NSColor,
+        accessibilityDescription: String,
+        pointSize: CGFloat,
+        weight: NSFont.Weight = .regular
+    ) -> NSImage? {
+        let sizeConfig = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+        let colorConfig = NSImage.SymbolConfiguration(paletteColors: [color])
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityDescription)?
+            .withSymbolConfiguration(sizeConfig)?
+            .withSymbolConfiguration(colorConfig)
+        image?.isTemplate = false
+        return image
+    }
+
+    private static func appIconImage() -> NSImage? {
+        if let bundledURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let image = NSImage(contentsOf: bundledURL) {
+            return image
+        }
+
+        let developmentURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("scripts/AppIcon.icns")
+        if let image = NSImage(contentsOf: developmentURL) {
+            return image
+        }
+
+        return NSImage(named: NSImage.applicationIconName)
     }
 
     private func buildMenuPanel() {
@@ -286,7 +404,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         pinItem.state = isPinned ? .on : .off
         menu.addItem(pinItem)
         menu.addItem(.separator())
-        menu.addItem(.init(title: "Check for Updates…", action: #selector(menuCheckUpdates), keyEquivalent: ""))
+        menu.addItem(.init(title: "Check for Updates...", action: #selector(menuCheckUpdates), keyEquivalent: ""))
         menu.addItem(.init(title: "About \(AppInfo.name)", action: #selector(menuAbout), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(.init(title: "Quit \(AppInfo.name)", action: #selector(menuQuit), keyEquivalent: "q"))
@@ -307,20 +425,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func menuAbout() {
         NSApp.activate(ignoringOtherApps: true)
+        let aboutText = """
+        \(AppInfo.tagline)
+
+        Built by \(AppInfo.credit).
+
+        Open source attribution:
+        Based on WhatCable by \(AppInfo.upstreamCredit).
+        Original project: \(AppInfo.upstreamURL)
+        License: MIT License.
+
+        Third-party runtime libraries:
+        None. WhatCable uses Apple system frameworks and SF Symbols.
+        """
         let credits = NSAttributedString(
-            string: "\(AppInfo.tagline)\n\nBuilt by \(AppInfo.credit).",
+            string: aboutText,
             attributes: [
                 .foregroundColor: NSColor.labelColor,
                 .font: NSFont.systemFont(ofSize: 11)
             ]
         )
-        NSApp.orderFrontStandardAboutPanel(options: [
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [
             .applicationName: AppInfo.name,
             .applicationVersion: AppInfo.version,
             .version: "",
             .credits: credits,
             .init(rawValue: "Copyright"): AppInfo.copyright
-        ])
+        ]
+        if let appIcon = Self.appIconImage() {
+            options[.applicationIcon] = appIcon
+        }
+        NSApp.orderFrontStandardAboutPanel(options: options)
     }
 
     @objc private func menuCheckUpdates() {
@@ -335,4 +470,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 final class RefreshSignal: ObservableObject {
     @Published var tick: Int = 0
     func bump() { tick &+= 1 }
+}
+
+private struct MenuBarState {
+    let symbolName: String
+    let symbolColor: NSColor
+    let help: String
+    let accessibilityLabel: String
+    let accessibilityValue: String
 }
