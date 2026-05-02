@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import UserNotifications
 import os.log
 
 struct AvailableUpdate: Equatable {
@@ -28,7 +27,6 @@ final class UpdateChecker: ObservableObject {
     @Published private(set) var lastCheck: Date?
 
     private var timer: Timer?
-    private var notifiedVersion: String?
     private var pendingVisibleCheck = false
 
     private init() {}
@@ -88,12 +86,7 @@ final class UpdateChecker: ObservableObject {
                     .flatMap { Self.isTrustedDownloadURL($0) ? $0 : nil }
 
                 if Self.isNewer(remote: remote, current: AppInfo.version) {
-                    let update = AvailableUpdate(version: remote, url: url, downloadURL: downloadURL, notes: notes)
-                    self.available = update
-                    if self.notifiedVersion != remote {
-                        self.notifiedVersion = remote
-                        self.postNotification(update)
-                    }
+                    self.available = AvailableUpdate(version: remote, url: url, downloadURL: downloadURL, notes: notes)
                 } else {
                     self.available = nil
                     if visible {
@@ -105,16 +98,6 @@ final class UpdateChecker: ObservableObject {
                 }
             }
         }.resume()
-    }
-
-    private func postNotification(_ update: AvailableUpdate) {
-        guard AppSettings.shared.notifyOnChanges else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "WhatCable \(update.version) available"
-        content.body = "You're on \(AppInfo.version). Click to view release notes."
-        UNUserNotificationCenter.current().add(
-            UNNotificationRequest(identifier: "update-\(update.version)", content: content, trigger: nil)
-        )
     }
 
     private func showAlert(title: String, message: String) {

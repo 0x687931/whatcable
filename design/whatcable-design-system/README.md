@@ -49,7 +49,7 @@ A knowledgeable friend explaining what's happening. Short. Plain. No jargon, no 
 - PDO 4 active: 20V @ 1.5A negotiated via PD 3.1
 
 ### Rules of thumb
-- **Sentence case everywhere.** "Show technical details", not "Show Technical Details".
+- **Sentence case everywhere.** "Hide empty ports", not "Hide Empty Ports".
 - **Second person.** "Your charger", not "the user's charger" or "we detected".
 - **Specs only when they help.** `30 W` and `5 Gbps` are useful. `PDO 4` is not.
 - **State the verdict first, the reason second.** "Cable limited to 60 W. Your charger could go faster."
@@ -75,9 +75,9 @@ WhatCable looks quiet. The popover is a tile grid: one tile per port, status car
 ### Layout
 - **320 px wide popover.** No footer.
 - **2-column tile grid**, 8 px gap, 122 px min-height per tile, 10 px radius.
-- **Header**: tracked uppercase wordmark · refresh · settings. No icon, no tagline.
+- **Header**: tracked uppercase wordmark · settings. No icon, no tagline.
 - **Warning banners promoted** to the top of the scroll view when a port is in trouble.
-- **"Show technical details"** expands a stacked detail section below the grid, not inline in tiles.
+- **Technical details** appear only for an Option-clicked popover session, stacked below the grid rather than inline in tiles.
 
 ### Type
 Geist for everything (Vercel, free, Google Fonts). Five roles, sized to the tile grid:
@@ -125,13 +125,12 @@ Base unit is 4 px. Common rhythm: 4 / 8 / 12 / 16. Tiles are 10 px radius, 8 px 
 Sit on top of a system vibrant material (translucent white). don't paint it solid. Inside the popover, no shadows, no borders on tiles. Hairline dividers (`rgba(0,0,0,0.06)`) where separation is needed. That's it.
 
 ### Iconography
-Six icons, no more. Each one means a single thing:
+Five icons, no more. Each one means a single thing:
 
 - **Bolt**. power flowing (colour carries the verdict)
 - **USB trident** (the official USB-IF mark). data
 - **Monitor**. display
 - **Plug**. empty
-- **Refresh**. refresh
 - **Cog**. settings
 
 Drawn at 24 px on a 1.5 px stroke, Lucide for utility, official trident for data. No emoji in product UI.

@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 struct ContentView: View {
     @ObservedObject private var cableStore = CableStateStore.shared
@@ -9,7 +8,7 @@ struct ContentView: View {
     @State private var showSettings = false
 
     private var showAdvanced: Bool {
-        settings.showTechnicalDetails || refresh.optionHeld
+        refresh.optionHeld
     }
 
     private var idlePortsCopy: String {
@@ -132,28 +131,12 @@ struct ContentView: View {
                 .foregroundStyle(.tertiary)
             Spacer()
             Button {
-                refresh.bump()
-            } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .buttonStyle(.borderless)
-            .help("Refresh")
-            Button {
                 showSettings = true
             } label: {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.borderless)
             .help("Settings")
-            if !settings.useMenuBarMode {
-                Button {
-                    NSApp.terminate(nil)
-                } label: {
-                    Image(systemName: "power")
-                }
-                .buttonStyle(.borderless)
-                .help("Quit \(AppInfo.name)")
-            }
         }
         .padding(.top, 16)
         .padding(.horizontal, 16)
@@ -167,7 +150,7 @@ struct ContentView: View {
                 .foregroundStyle(.tertiary)
             Text("No USB-C ports")
                 .font(.system(size: 22, weight: .medium))
-            Text("No port-controller services were found. Try Refresh, or check USB in System Information.")
+            Text("No port-controller services were found. Check USB in System Information.")
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

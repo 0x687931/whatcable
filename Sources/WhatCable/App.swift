@@ -7,21 +7,19 @@ struct WhatCableApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        // Headless — UI is owned by AppDelegate (status item + menu panel, or
-        // a regular window, depending on AppSettings.useMenuBarMode).
+        // Headless — UI is owned by AppDelegate's status item and menu panel.
         Settings { EmptyView() }
     }
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate {
     static let refreshSignal = RefreshSignal()
     private static let panelWidth: CGFloat = 320
     private static let fallbackPanelHeight: CGFloat = 420
     private static let screenPadding: CGFloat = 8
     private let cableStore = CableStateStore.shared
 
-    // Menu bar mode
     private var statusItem: NSStatusItem?
     private var menuPanel: NSPanel?
     private var hostingController: NSHostingController<AnyView>?
@@ -29,9 +27,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var globalEventMonitor: Any?
     private var localEventMonitor: Any?
     private var isPinned = false
-
-    // Window mode
-    private var window: NSWindow?
 
     private var cancellables: Set<AnyCancellable> = []
 
@@ -41,40 +36,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             NSApp.applicationIconImage = appIcon
         }
 
-        NotificationManager.shared.start()
         UpdateChecker.shared.start()
         observeCableStateForStatusItem()
-
-        applyDisplayMode(menuBar: AppSettings.shared.useMenuBarMode)
-
-        AppSettings.shared.$useMenuBarMode
-            .removeDuplicates()
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] menuBar in
-                self?.applyDisplayMode(menuBar: menuBar)
-            }
-            .store(in: &cancellables)
+        setUpMenuBarMode()
+        NSApp.setActivationPolicy(.accessory)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        !AppSettings.shared.useMenuBarMode
+        false
     }
 
-    // MARK: - Display mode
-
-    private func applyDisplayMode(menuBar: Bool) {
-        if menuBar {
-            tearDownWindowMode()
-            setUpMenuBarMode()
-            NSApp.setActivationPolicy(.accessory)
-        } else {
-            tearDownMenuBarMode()
-            NSApp.setActivationPolicy(.regular)
-            setUpWindowMode()
-            NSApp.activate(ignoringOtherApps: true)
-        }
-    }
+    // MARK: - Menu bar UI
 
     private func setUpMenuBarMode() {
         if menuPanel == nil {
@@ -232,7 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         panel.contentViewController = controller
 
         // Track SwiftUI's preferred content size so the panel grows/shrinks as
-        // the user toggles "Show technical details" or expands a port detail
+        // the user reveals technical details or expands a port detail
         // accordion — keeping the top edge anchored to the menu bar.
         contentSizeObservation = controller.observe(
             \.preferredContentSize, options: [.new]
@@ -277,46 +249,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return max(1, anchoredTopY - visibleFrame.minY - Self.screenPadding)
     }
 
-    private func tearDownMenuBarMode() {
-        hideMenuPanel()
-        contentSizeObservation?.invalidate()
-        contentSizeObservation = nil
-        menuPanel?.orderOut(nil)
-        menuPanel = nil
-        hostingController = nil
-        if let statusItem {
-            NSStatusBar.system.removeStatusItem(statusItem)
-        }
-        statusItem = nil
-    }
-
-    private func setUpWindowMode() {
-        if let window {
-            window.makeKeyAndOrderFront(nil)
-            return
-        }
-        let host = NSHostingController(
-            rootView: ContentView().environmentObject(Self.refreshSignal)
-        )
-        let w = NSWindow(contentViewController: host)
-        w.title = AppInfo.name
-        w.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        w.setContentSize(NSSize(width: 320, height: 520))
-        w.minSize = NSSize(width: 320, height: 420)
-        w.center()
-        w.delegate = self
-        w.isReleasedWhenClosed = false
-        window = w
-        w.makeKeyAndOrderFront(nil)
-    }
-
-    private func tearDownWindowMode() {
-        window?.delegate = nil
-        window?.close()
-        window = nil
-    }
-
-    // MARK: - Status item handling (menu bar mode)
+    // MARK: - Status item handling
 
     @objc private func handleClick(_ sender: NSStatusBarButton) {
         guard let event = NSApp.currentEvent else { return }
@@ -401,7 +334,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func showMenu(from button: NSStatusBarButton) {
         guard let statusItem else { return }
         let menu = NSMenu()
-        menu.addItem(.init(title: "Refresh", action: #selector(menuRefresh), keyEquivalent: "r"))
         let pinItem = NSMenuItem(title: "Keep window open", action: #selector(menuTogglePin), keyEquivalent: "p")
         pinItem.state = isPinned ? .on : .off
         menu.addItem(pinItem)
@@ -419,10 +351,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func menuTogglePin() {
         isPinned.toggle()
-    }
-
-    @objc private func menuRefresh() {
-        Self.refreshSignal.bump()
     }
 
     @objc private func menuAbout() {

@@ -43,7 +43,6 @@ const Plug = ({ size = 22, color = "currentColor" }) => (
 );
 
 const Externaldrive = (p) => <Svg {...p}><rect x="3" y="9" width="18" height="9" rx="2"/><circle cx="17" cy="13.5" r="0.8" fill="currentColor"/></Svg>;
-const Refresh = (p) => <Svg {...p} sw={2}><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></Svg>;
 const Gear = (p) => <Svg {...p} sw={1.6}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></Svg>;
 const ExclamGlyph = () => (
   <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
@@ -123,7 +122,6 @@ function App() {
         <div className="header">
           <div className="wordmark">WhatCable</div>
           <div className="spacer" />
-          <button className="iconbtn" title="Refresh"><Refresh size={14} /></button>
           <button className="iconbtn" title="Settings"><Gear size={14} /></button>
         </div>
 

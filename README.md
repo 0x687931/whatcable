@@ -27,9 +27,9 @@ Per port, in plain English:
 - **Charger PDO list** — every voltage profile the charger advertises (5V / 9V / 12V / 15V / 20V…) with the currently negotiated profile highlighted in real time
 - **Connected device identity** — vendor name and product type, decoded from the PD Discover Identity response
 - **Active transports** — USB 2 / USB 3 / Thunderbolt / DisplayPort
-- **"Show technical details"** toggle revealing the underlying IOKit properties for engineers
+- **Technical details on demand** — ⌥-click the menu bar icon to reveal the underlying IOKit properties for that popover session
 
-Right-click the menu bar icon for **Refresh**, a **Keep window open** toggle (handy for screenshots and demos), **About**, and **Quit**.
+Right-click the menu bar icon for a **Keep window open** toggle (handy for screenshots and demos), **Check for Updates**, **About**, and **Quit**.
 
 ## Install
 
