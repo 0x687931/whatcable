@@ -16,10 +16,10 @@ final class UpdateChecker: ObservableObject {
     static let shared = UpdateChecker()
 
     private nonisolated static let log = Logger(subsystem: "com.bitmoor.whatcable", category: "updates")
-    private nonisolated static let endpoint = URL(string: "https://api.github.com/repos/darrylmorley/whatcable/releases/latest")!
+    private nonisolated static let endpoint = URL(string: "https://api.github.com/repos/0x687931/whatcable/releases/latest")!
     private nonisolated static let releaseHost = "github.com"
-    private nonisolated static let releasePathPrefix = "/darrylmorley/whatcable/releases/"
-    private nonisolated static let downloadPathPrefix = "/darrylmorley/whatcable/releases/download/"
+    private nonisolated static let releasePathPrefix = "/0x687931/whatcable/releases/"
+    private nonisolated static let downloadPathPrefix = "/0x687931/whatcable/releases/download/"
     private nonisolated static let updateAssetName = "WhatCable.zip"
     private nonisolated static let pollInterval: TimeInterval = 6 * 60 * 60 // 6h
 

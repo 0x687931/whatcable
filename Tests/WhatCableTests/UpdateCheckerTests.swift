@@ -30,14 +30,16 @@ final class UpdateCheckerTests: XCTestCase {
     }
 
     func testTrustedReleaseURLs() {
-        XCTAssertTrue(UpdateChecker.isTrustedReleaseURL(URL(string: "https://github.com/darrylmorley/whatcable/releases/tag/v0.4.3")!))
-        XCTAssertFalse(UpdateChecker.isTrustedReleaseURL(URL(string: "http://github.com/darrylmorley/whatcable/releases/tag/v0.4.3")!))
+        XCTAssertTrue(UpdateChecker.isTrustedReleaseURL(URL(string: "https://github.com/0x687931/whatcable/releases/tag/v0.4.3")!))
+        XCTAssertFalse(UpdateChecker.isTrustedReleaseURL(URL(string: "http://github.com/0x687931/whatcable/releases/tag/v0.4.3")!))
+        XCTAssertFalse(UpdateChecker.isTrustedReleaseURL(URL(string: "https://github.com/darrylmorley/whatcable/releases/tag/v0.4.3")!))
         XCTAssertFalse(UpdateChecker.isTrustedReleaseURL(URL(string: "https://github.com/example/whatcable/releases/tag/v0.4.3")!))
     }
 
     func testTrustedDownloadURLs() {
-        XCTAssertTrue(UpdateChecker.isTrustedDownloadURL(URL(string: "https://github.com/darrylmorley/whatcable/releases/download/v0.4.3/WhatCable.zip")!))
-        XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://github.com/darrylmorley/whatcable/releases/download/v0.4.3/Other.zip")!))
-        XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://example.com/darrylmorley/whatcable/releases/download/v0.4.3/WhatCable.zip")!))
+        XCTAssertTrue(UpdateChecker.isTrustedDownloadURL(URL(string: "https://github.com/0x687931/whatcable/releases/download/v0.4.3/WhatCable.zip")!))
+        XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://github.com/0x687931/whatcable/releases/download/v0.4.3/Other.zip")!))
+        XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://github.com/darrylmorley/whatcable/releases/download/v0.4.3/WhatCable.zip")!))
+        XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://example.com/0x687931/whatcable/releases/download/v0.4.3/WhatCable.zip")!))
     }
 }

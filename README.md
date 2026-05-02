@@ -6,8 +6,8 @@ A small macOS menu bar app that tells you, in plain English, what each USB-C cab
 
 USB-C hides a lot under one connector. Anything from a USB 2.0 charge-only cable to a 240W / 40 Gbps Thunderbolt 4 cable, all looking identical in your drawer. macOS already exposes the relevant info via IOKit; WhatCable surfaces it as a friendly menu bar popover.
 
-[![Latest release](https://img.shields.io/github/v/release/darrylmorley/whatcable)](https://github.com/darrylmorley/whatcable/releases/latest)
-[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://github.com/darrylmorley/whatcable)
+[![Latest release](https://img.shields.io/github/v/release/0x687931/whatcable)](https://github.com/0x687931/whatcable/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://github.com/0x687931/whatcable)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ![WhatCable popover](docs/screenshot.png)
@@ -19,8 +19,8 @@ Per port, in plain English:
 - **At-a-glance headline** — Thunderbolt / USB4, USB device, Charging only, Slow USB / charge-only cable, Nothing connected
 - **Charging diagnostic** — when something's plugged in, a banner identifies the bottleneck:
   - *"Cable is limiting charging speed"* (cable rated below the charger)
-  - *"Charging at 30W (charger can do up to 96W)"* (Mac is asking for less, e.g. battery near full)
-  - *"Charging well at 96W"* (everything matches)
+  - *"Power negotiated at 30W (charger can offer 96W)"* (Mac negotiated less, e.g. battery near full)
+  - *"Power negotiated at 96W"* (charger and cable match)
 - **Cable e-marker info** — the cable's actual speed (USB 2.0, 5 / 10 / 20 / 40 / 80 Gbps), current rating (3 A / 5 A → up to 60W / 100W / 240W), and the chip's vendor
 - **Charger PDO list** — every voltage profile the charger advertises (5V / 9V / 12V / 15V / 20V…) with the currently negotiated profile highlighted in real time
 - **Connected device identity** — vendor name and product type, decoded from the PD Discover Identity response
@@ -31,7 +31,7 @@ Right-click the menu bar icon for **Refresh**, a **Keep window open** toggle (ha
 
 ## Install
 
-Download the latest `WhatCable.zip` from the [Releases page](https://github.com/darrylmorley/whatcable/releases/latest), unzip, and drag `WhatCable.app` to `/Applications`.
+Download the latest `WhatCable.zip` from the [Releases page](https://github.com/0x687931/whatcable/releases/latest), unzip, and drag `WhatCable.app` to `/Applications`.
 
 The app is universal (Apple silicon + Intel), signed with a Developer ID, and notarised by Apple — no Gatekeeper warnings.
 
@@ -43,7 +43,7 @@ WhatCable reads three families of IOKit services. No entitlements, no private AP
 
 | Service | What it gives us |
 | --- | --- |
-| `AppleHPMInterfaceType10/11/12`, `AppleTCControllerType10` | Per-port state: connection, transports, plug orientation, e-marker presence |
+| `AppleHPMInterfaceType10/11/12`, `AppleTCControllerType10/11` | Per-port state: connection, transports, plug orientation, e-marker presence |
 | `IOPortFeaturePowerSource` | Full PDO list from the connected source, with the live "winning" PDO |
 | `IOPortTransportComponentCCUSBPDSOP` | PD Discover Identity VDOs for SOP (port partner) and SOP' (cable e-marker) |
 
