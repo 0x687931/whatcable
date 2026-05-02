@@ -33,9 +33,9 @@ Right-click the menu bar icon for **Refresh**, a **Keep window open** toggle (ha
 
 Download the latest `WhatCable.zip` from the [Releases page](https://github.com/0x687931/whatcable/releases/latest), unzip, and drag `WhatCable.app` to `/Applications`.
 
-The app is universal (Apple silicon + Intel), signed with a Developer ID, and notarised by Apple — no Gatekeeper warnings.
+The app bundle is universal (Apple silicon + Intel), signed with a Developer ID, and notarised by Apple — no Gatekeeper warnings.
 
-Requires macOS 14 (Sonoma) or later.
+Requires macOS 14 (Sonoma) or later. Full USB-C cable diagnostics require Apple silicon; Intel Thunderbolt 3 controllers do not expose USB-PD negotiation or cable e-marker data through the public IOKit paths WhatCable uses.
 
 ## How it works
 
@@ -96,6 +96,7 @@ cp .env.example .env
 - **PD spec coverage:** the decoder targets PD 3.0 / 3.1. PD 3.2 EPR variants may need tweaks once we see real data.
 - **Vendor name lookup is bundled but not exhaustive** — common cable, charger, hub, dock, and storage vendors are recognised; others fall back to the hex VID.
 - **macOS only.** iOS sandboxing makes USB-C e-marker access much harder.
+- **Apple silicon required for full diagnostics.** Intel Macs can expose Thunderbolt/USB-C controller presence, but not the USB-PD state or cable e-marker VDOs needed to answer what the cable can do.
 - **Not on the App Store.** App Sandbox blocks the IOKit reads we depend on.
 
 ## Contributing

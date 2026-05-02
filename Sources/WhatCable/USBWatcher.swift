@@ -103,6 +103,7 @@ final class USBWatcher: ObservableObject {
         let bcdUSB = (dict["bcdUSB"] as? NSNumber)?.uint16Value
         let busPower = (dict["Bus Power Available"] as? NSNumber).map { $0.intValue * 2 }
         let current = (dict["Requested Power"] as? NSNumber).map { $0.intValue * 2 }
+        let (busIndex, controllerPortName) = controllerInfo(for: service, fallback: locationID)
 
         return USBDevice(
             id: entryID,
@@ -111,11 +112,74 @@ final class USBWatcher: ObservableObject {
             productID: productID,
             vendorName: dict["USB Vendor Name"] as? String,
             productName: dict["USB Product Name"] as? String,
+            serialNumber: dict["USB Serial Number"] as? String,
             usbVersion: bcdUSB.map { formatBCD($0) },
             speedRaw: speedRaw,
             busPowerMA: busPower,
-            currentMA: current
+            currentMA: current,
+            busIndex: busIndex,
+            controllerPortName: controllerPortName,
+            rawProperties: IOKitSupport.stringProperties(from: dict)
         )
+    }
+
+    /// Walk up from an `IOUSBHostDevice` to find the USB port node that carries
+    /// `UsbIOPort`, whose path ends in the physical port service name. If that
+    /// direct path is not available, keep the controller bus index as a narrow
+    /// fallback for older topologies.
+    private func controllerInfo(for service: io_service_t, fallback locationID: UInt32) -> (Int?, String?) {
+        var current = service
+        IOObjectRetain(current)
+        defer { IOObjectRelease(current) }
+
+        var busIndex: Int?
+        var controllerPortName: String?
+
+        for _ in 0..<16 {
+            var parent: io_service_t = 0
+            guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
+                break
+            }
+            IOObjectRelease(current)
+            current = parent
+
+            if controllerPortName == nil,
+               let rawPort = IORegistryEntryCreateCFProperty(
+                    current,
+                    "UsbIOPort" as CFString,
+                    kCFAllocatorDefault,
+                    0
+               )?.takeRetainedValue() as? String,
+               let portName = Self.portName(fromUSBIOPortPath: rawPort) {
+                controllerPortName = portName
+            }
+
+            var classBuf = [CChar](repeating: 0, count: 128)
+            IOObjectGetClass(current, &classBuf)
+            let className = String(cString: classBuf)
+            if className.hasPrefix("AppleT") && className.hasSuffix("USBXHCI") {
+                if let loc = IORegistryEntryCreateCFProperty(
+                    current,
+                    "locationID" as CFString,
+                    kCFAllocatorDefault,
+                    0
+                )?.takeRetainedValue() as? NSNumber {
+                    busIndex = Int((loc.uint32Value >> 24) & 0xFF)
+                }
+                break
+            }
+        }
+
+        if busIndex == nil {
+            busIndex = Int((locationID >> 24) & 0xFF)
+        }
+        return (busIndex, controllerPortName)
+    }
+
+    private static func portName(fromUSBIOPortPath path: String) -> String? {
+        guard let last = path.split(separator: "/").last else { return nil }
+        let name = String(last)
+        return name.hasPrefix("Port-") ? name : nil
     }
 
     private func formatBCD(_ value: UInt16) -> String {

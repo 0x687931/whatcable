@@ -57,18 +57,34 @@ struct ContentView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 12) {
-                        let warningItems = visiblePorts.compactMap { port -> PortWarningItem? in
+                        let warningItems = visiblePorts.flatMap { port -> [PortWarningItem] in
+                            var items: [PortWarningItem] = []
+                            let portName = port.portDescription ?? port.serviceName
+
+                            if let diagnostic = cableStore.sessionQualityDiagnostic(for: port) {
+                                items.append(
+                                    PortWarningItem(
+                                        id: "\(port.id)-session",
+                                        portName: portName,
+                                        diagnostic: diagnostic
+                                    )
+                                )
+                            }
+
                             let sources = cableStore.sources(for: port)
                             let identities = cableStore.identities(for: port)
-                            guard let diagnostic = ChargingDiagnostic(port: port, sources: sources, identities: identities),
-                                  diagnostic.isWarning else {
-                                return nil
+                            if let diagnostic = ChargingDiagnostic(port: port, sources: sources, identities: identities),
+                               diagnostic.isWarning {
+                                items.append(
+                                    PortWarningItem(
+                                        id: "\(port.id)-charging",
+                                        portName: portName,
+                                        diagnostic: diagnostic
+                                    )
+                                )
                             }
-                            return PortWarningItem(
-                                id: port.id,
-                                portName: port.portDescription ?? port.serviceName,
-                                diagnostic: diagnostic
-                            )
+
+                            return items
                         }
                         ForEach(warningItems) { item in
                             PortWarningBanner(item: item)

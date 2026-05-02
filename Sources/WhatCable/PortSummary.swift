@@ -52,6 +52,17 @@ extension PortSummary {
         let hasEmarker = port.activeCable == true
         let portLabel = port.portDescription ?? port.serviceName
 
+        if port.rawProperties["WhatCableDetectionMode"] == "Intel Thunderbolt fallback" {
+            self.status = .unknown
+            self.headline = "Intel USB-C unsupported"
+            self.subtitle = "This Intel Thunderbolt controller does not expose USB-PD or cable e-marker data to WhatCable."
+            self.bullets = [
+                "USB-C controller detected through Intel Thunderbolt fallback",
+                "Cable speed, power negotiation, and e-marker details are unavailable"
+            ]
+            return
+        }
+
         if !connected {
             self.status = .empty
             self.headline = "Nothing connected"

@@ -129,7 +129,7 @@ struct PortCard: View {
         case .displayCable:
             return "Display"
         case .unknown:
-            return "Connected"
+            return summary.headline
         }
     }
 

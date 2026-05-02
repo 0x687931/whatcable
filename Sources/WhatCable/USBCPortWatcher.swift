@@ -23,6 +23,18 @@ final class USBCPortWatcher: ObservableObject {
         "AppleTCControllerType11"
     ]
 
+    // Intel Macs with USB-C route the connector through Thunderbolt 3
+    // controllers rather than Apple HPM/TC port-controller services. These
+    // classes do not expose PD/e-marker state, so they are scanned only as a
+    // last-resort "USB-C exists" fallback when no Apple-style physical ports
+    // are present.
+    private static let intelThunderboltFallbackClasses = [
+        "AppleThunderboltPort",
+        "IOThunderboltPort",
+        "AppleThunderboltNHIType3",
+        "IOThunderboltSwitchIntelJHL9580"
+    ]
+
     private var notifyPort: IONotificationPortRef?
     private var iterators: [io_iterator_t] = []
 
@@ -46,6 +58,9 @@ final class USBCPortWatcher: ObservableObject {
                 iterators.append(iter)
                 drain(iterator: iter)
             }
+        }
+        if ports.isEmpty {
+            scanIntelThunderboltFallback()
         }
     }
 
@@ -71,6 +86,9 @@ final class USBCPortWatcher: ObservableObject {
                 IOObjectRelease(iter)
             }
         }
+        if ports.isEmpty {
+            scanIntelThunderboltFallback()
+        }
     }
 
     private func drain(iterator: io_iterator_t) {
@@ -81,6 +99,10 @@ final class USBCPortWatcher: ObservableObject {
             IOObjectRelease(service)
         }
         // Active connections first, then alphabetically within each group.
+        sortPorts()
+    }
+
+    private func sortPorts() {
         ports.sort { lhs, rhs in
             let lhsActive = lhs.connectionActive == true
             let rhsActive = rhs.connectionActive == true
@@ -89,12 +111,36 @@ final class USBCPortWatcher: ObservableObject {
         }
     }
 
+    private func scanIntelThunderboltFallback() {
+        let initialCount = ports.count
+        for cls in Self.intelThunderboltFallbackClasses {
+            var iter: io_iterator_t = 0
+            if IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching(cls), &iter) == KERN_SUCCESS {
+                drainIntelThunderboltFallback(iterator: iter)
+                IOObjectRelease(iter)
+            }
+            if ports.count > initialCount {
+                break
+            }
+        }
+    }
+
+    private func drainIntelThunderboltFallback(iterator: io_iterator_t) {
+        while case let service = IOIteratorNext(iterator), service != 0 {
+            let ordinal = ports.count + 1
+            if let port = makeIntelThunderboltFallback(from: service, ordinal: ordinal),
+               !ports.contains(where: { $0.id == port.id }) {
+                ports.append(port)
+            }
+            IOObjectRelease(service)
+        }
+        sortPorts()
+    }
+
     private func makePort(from service: io_service_t) -> USBCPort? {
         let entryID = IOKitSupport.entryID(for: service)
 
-        var nameBuf = [CChar](repeating: 0, count: 128)
-        IORegistryEntryGetName(service, &nameBuf)
-        let serviceName = String(cString: nameBuf)
+        let serviceName = registryEntryName(for: service)
 
         var classBuf = [CChar](repeating: 0, count: 128)
         IOObjectGetClass(service, &classBuf)
@@ -137,8 +183,71 @@ final class USBCPortWatcher: ObservableObject {
             powerCurrentLimits: intArray(dict["IOAccessoryPowerCurrentLimits"]),
             firmwareVersion: IOKitSupport.hexData(dict["FW Version"]),
             bootFlagsHex: IOKitSupport.hexData(dict["Boot Flags"]),
+            busIndex: busIndex(for: service),
             rawProperties: raw
         )
+    }
+
+    private func makeIntelThunderboltFallback(from service: io_service_t, ordinal: Int) -> USBCPort? {
+        let entryID = IOKitSupport.entryID(for: service)
+        let serviceName = registryEntryName(for: service)
+
+        var classBuf = [CChar](repeating: 0, count: 128)
+        IOObjectGetClass(service, &classBuf)
+        let className = String(cString: classBuf)
+
+        let dict = IOKitSupport.properties(for: service) ?? [:]
+        return USBCPort.intelThunderboltFallback(
+            entryID: entryID,
+            serviceName: serviceName,
+            className: className,
+            properties: dict,
+            ordinal: ordinal
+        )
+    }
+
+    private func registryEntryName(for service: io_service_t) -> String {
+        var nameBuf = [CChar](repeating: 0, count: 128)
+        IORegistryEntryGetName(service, &nameBuf)
+        let baseName = String(cString: nameBuf)
+
+        var locBuf = [CChar](repeating: 0, count: 128)
+        if IORegistryEntryGetLocationInPlane(service, kIOServicePlane, &locBuf) == KERN_SUCCESS {
+            let location = String(cString: locBuf)
+            if !location.isEmpty {
+                return "\(baseName)@\(location)"
+            }
+        }
+        return baseName
+    }
+
+    /// Walks the IOKit parent chain looking for an `hpm<N>@...` SPMI node and
+    /// returns N. On some Apple-silicon machines this can be matched against a
+    /// USB controller bus index, but direct `UsbIOPort` paths are preferred.
+    private func busIndex(for service: io_service_t) -> Int? {
+        var current = service
+        IOObjectRetain(current)
+        defer { IOObjectRelease(current) }
+
+        for _ in 0..<8 {
+            var parent: io_service_t = 0
+            guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
+                return nil
+            }
+            IOObjectRelease(current)
+            current = parent
+
+            var nameBuf = [CChar](repeating: 0, count: 128)
+            IORegistryEntryGetName(current, &nameBuf)
+            let name = String(cString: nameBuf)
+            if name.hasPrefix("hpm"), let at = name.firstIndex(of: "@") {
+                let digits = name[name.index(name.startIndex, offsetBy: 3)..<at]
+                if let n = Int(digits) {
+                    return n
+                }
+            }
+        }
+        return nil
     }
 
     private func stringArray(_ value: Any?) -> [String] {

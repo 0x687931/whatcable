@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct PortWarningItem: Identifiable {
-    let id: UInt64
+    let id: String
     let portName: String
-    let diagnostic: ChargingDiagnostic
+    let diagnostic: any DiagnosticBannerContent
 }
 
 struct PortWarningBanner: View {

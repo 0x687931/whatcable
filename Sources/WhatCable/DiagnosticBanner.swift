@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DiagnosticBanner: View {
-    let diagnostic: ChargingDiagnostic
+    let diagnostic: any DiagnosticBannerContent
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {

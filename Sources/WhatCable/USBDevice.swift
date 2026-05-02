@@ -7,10 +7,18 @@ struct USBDevice: Identifiable, Hashable {
     let productID: UInt16
     let vendorName: String?
     let productName: String?
+    let serialNumber: String?
     let usbVersion: String?
     let speedRaw: UInt8?
     let busPowerMA: Int?
     let currentMA: Int?
+    /// XHCI controller index derived from the controller `locationID` upper byte.
+    /// Kept as a fallback for topologies that do not expose `UsbIOPort`.
+    let busIndex: Int?
+    /// Physical USB-C service name parsed from an ancestor `UsbIOPort` path,
+    /// such as `Port-USB-C@1`. This is the preferred device-to-port match key.
+    let controllerPortName: String?
+    let rawProperties: [String: String]
 
     var speedLabel: String {
         // IOUSBHostDevice "Device Speed" enum values

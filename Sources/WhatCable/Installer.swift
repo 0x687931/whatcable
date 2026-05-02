@@ -9,6 +9,7 @@ import os.log
 final class Installer: ObservableObject {
     static let shared = Installer()
     private nonisolated static let log = Logger(subsystem: "com.bitmoor.whatcable", category: "installer")
+    typealias CommandRunner = (_ launchPath: String, _ arguments: [String]) throws -> String
 
     enum State: Equatable {
         case idle
@@ -28,8 +29,11 @@ final class Installer: ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
+    private let commandRunner: CommandRunner
 
-    private init() {}
+    init(commandRunner: @escaping CommandRunner = Installer.captureOutput) {
+        self.commandRunner = commandRunner
+    }
 
     func install(_ update: AvailableUpdate) {
         guard state.canStartInstall else { return }
@@ -46,8 +50,7 @@ final class Installer: ObservableObject {
 
                 state = .verifying
                 let extractedApp = try unzipAndLocate(zip: zipURL, in: workDir)
-                try stripQuarantine(at: extractedApp)
-                try verifyUpdateIdentity(candidateApp: extractedApp, currentApp: Bundle.main.bundleURL)
+                try validateExtractedUpdate(candidateApp: extractedApp, currentApp: Bundle.main.bundleURL)
 
                 state = .installing
                 try launchSwapScript(newApp: extractedApp, currentApp: Bundle.main.bundleURL)
@@ -96,9 +99,19 @@ final class Installer: ObservableObject {
         return app
     }
 
+    func validateExtractedUpdate(candidateApp: URL, currentApp: URL) throws {
+        try verifyUpdateIdentity(candidateApp: candidateApp, currentApp: currentApp)
+        try assessWithGatekeeper(candidateApp)
+        try stripQuarantine(at: candidateApp)
+    }
+
+    private func assessWithGatekeeper(_ app: URL) throws {
+        try run("/usr/sbin/spctl", ["--assess", "--type", "execute", app.path])
+    }
+
     private func stripQuarantine(at url: URL) throws {
-        // Best-effort — failure to strip isn't fatal, Gatekeeper will just
-        // prompt the user instead of launching silently.
+        // Best-effort after validation. Failure to strip isn't fatal;
+        // Gatekeeper will just prompt the user instead of launching silently.
         _ = try? run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", url.path])
     }
 
@@ -119,7 +132,7 @@ final class Installer: ObservableObject {
     }
 
     private func validateZipEntries(_ zip: URL) throws {
-        let output = try captureOutput("/usr/bin/unzip", ["-Z1", zip.path])
+        let output = try run("/usr/bin/unzip", ["-Z1", zip.path])
         for line in output.split(separator: "\n") {
             let path = String(line)
             let components = path.split(separator: "/", omittingEmptySubsequences: false)
@@ -156,7 +169,7 @@ final class Installer: ObservableObject {
     }
 
     private func signatureIdentity(of app: URL) throws -> SignatureIdentity {
-        let output = try captureOutput("/usr/bin/codesign", ["-dvv", "-r-", app.path])
+        let output = try run("/usr/bin/codesign", ["-dvv", "-r-", app.path])
         var identifier: String?
         var teamIdentifier: String?
         var requirement: String?
@@ -221,11 +234,11 @@ final class Installer: ObservableObject {
 
     @discardableResult
     private func run(_ launchPath: String, _ arguments: [String]) throws -> String {
-        let result = try captureOutput(launchPath, arguments)
+        let result = try commandRunner(launchPath, arguments)
         return result
     }
 
-    private func captureOutput(_ launchPath: String, _ arguments: [String]) throws -> String {
+    private nonisolated static func captureOutput(_ launchPath: String, _ arguments: [String]) throws -> String {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: launchPath)
         task.arguments = arguments
