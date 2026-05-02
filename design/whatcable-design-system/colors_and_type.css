@@ -53,24 +53,36 @@
   --status-warn: var(--tint-orange);
 
   /* -----------------------------------------------------------
-     TYPE — system stack + SwiftUI semantic ramp.
+     TYPE — Geist throughout, ramped to the popover tile grid.
+     Five roles: eyebrow (10), pill (9), body (12), summary (12),
+     headline (22). Old SwiftUI semantic aliases kept for legacy
+     preview pages but no longer used in the popover.
      ----------------------------------------------------------- */
-  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro",
-                 "Helvetica Neue", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-system: "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                 "Helvetica Neue", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* Sizes — Apple's macOS dynamic-type defaults at default size class */
+  /* Tile-grid ramp (b9a7990) */
+  --fs-headline: 22px;   /* tile big readout. monospacedDigit, -0.025em */
+  --fs-summary:  12px;   /* banner first line. weight 600 */
+  --fs-body:     12px;   /* tile context, banner detail */
+  --fs-eyebrow:  10px;   /* port name, section label, wordmark. tracked 0.08em uppercase */
+  --fs-pill:      9px;   /* active marker */
+
+  --tracking-eyebrow: 0.08em;
+  --tracking-wordmark: 0.16em;
+  --tracking-headline: -0.025em;
+
+  /* Legacy aliases — kept so old preview pages still render */
   --fs-largeTitle: 26px;
-  --fs-title:      22px;  /* .title  */
-  --fs-title2:     17px;  /* .title2 */
-  --fs-title3:     15px;  /* .title3 */
-  --fs-headline:   13px;  /* .headline (semibold) */
-  --fs-body:       13px;  /* .body */
-  --fs-callout:    12px;  /* .callout */
-  --fs-subhead:    11px;  /* .subheadline */
-  --fs-footnote:   10px;  /* .footnote */
-  --fs-caption:    10px;  /* .caption */
-  --fs-caption2:    9px;  /* .caption2 */
+  --fs-title:      22px;
+  --fs-title2:     17px;
+  --fs-title3:     15px;
+  --fs-callout:    12px;
+  --fs-subhead:    11px;
+  --fs-footnote:   10px;
+  --fs-caption:    10px;
+  --fs-caption2:    9px;
 
   /* Weights */
   --fw-regular: 400;

@@ -60,8 +60,32 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 content()
             }
-            .toggleStyle(.switch)
+            .toggleStyle(GreenSwitchToggleStyle())
             .controlSize(.small)
         }
+    }
+}
+
+struct GreenSwitchToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+            Spacer()
+            ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                Capsule()
+                    .fill(configuration.isOn ? Color.green : Color.gray.opacity(0.35))
+                    .frame(width: 32, height: 18)
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 14, height: 14)
+                    .padding(.horizontal, 2)
+                    .shadow(color: .black.opacity(0.18), radius: 1, y: 0.5)
+            }
+            .animation(.easeInOut(duration: 0.16), value: configuration.isOn)
+            .onTapGesture {
+                configuration.isOn.toggle()
+            }
+        }
+        .contentShape(Rectangle())
     }
 }

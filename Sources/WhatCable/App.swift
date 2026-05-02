@@ -7,19 +7,22 @@ struct WhatCableApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        // Headless — UI is owned by AppDelegate (status item + popover, or
+        // Headless — UI is owned by AppDelegate (status item + menu panel, or
         // a regular window, depending on AppSettings.useMenuBarMode).
         Settings { EmptyView() }
     }
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSWindowDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static let refreshSignal = RefreshSignal()
 
     // Menu bar mode
     private var statusItem: NSStatusItem?
-    private var popover: NSPopover?
+    private var menuPanel: NSPanel?
+    private var hostingView: NSHostingView<AnyView>?
+    private var globalEventMonitor: Any?
+    private var localEventMonitor: Any?
     private var isPinned = false
 
     // Window mode
@@ -28,8 +31,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private var cancellables: Set<AnyCancellable> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Override the process name so the About panel and menus use the
-        // app name even though the SwiftPM executable name might differ.
         ProcessInfo.processInfo.setValue(AppInfo.name, forKey: "processName")
 
         NotificationManager.shared.start()
@@ -37,7 +38,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
         applyDisplayMode(menuBar: AppSettings.shared.useMenuBarMode)
 
-        // Live-switch when the user flips the toggle in Settings.
         AppSettings.shared.$useMenuBarMode
             .removeDuplicates()
             .dropFirst()
@@ -49,8 +49,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // In window mode, closing the window quits the app. In menu bar mode
-        // there's no window to close, so this is harmless either way.
         !AppSettings.shared.useMenuBarMode
     }
 
@@ -70,16 +68,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     }
 
     private func setUpMenuBarMode() {
-        if popover == nil {
-            let p = NSPopover()
-            p.behavior = isPinned ? .applicationDefined : .transient
-            p.animates = true
-            p.contentSize = NSSize(width: 320, height: 520)
-            p.contentViewController = NSHostingController(
-                rootView: ContentView().environmentObject(Self.refreshSignal)
-            )
-            p.delegate = self
-            popover = p
+        if menuPanel == nil {
+            buildMenuPanel()
         }
         if statusItem == nil {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -93,9 +83,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         }
     }
 
+    private func buildMenuPanel() {
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 520),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.level = .popUpMenu
+        panel.hidesOnDeactivate = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.isMovable = false
+        panel.isReleasedWhenClosed = false
+
+        // SwiftUI owns the Liquid Glass background via `.glassEffect(...)` in
+        // ContentView. The panel itself is a transparent host; the rounded-rect
+        // glass shape provides the visible chrome and the panel shadow follows
+        // the content alpha.
+        let hosting = NSHostingView(
+            rootView: AnyView(ContentView().environmentObject(Self.refreshSignal))
+        )
+        hosting.sizingOptions = .preferredContentSize
+
+        panel.contentView = hosting
+        self.menuPanel = panel
+        self.hostingView = hosting
+    }
+
     private func tearDownMenuBarMode() {
-        if let popover, popover.isShown { popover.performClose(nil) }
-        popover = nil
+        hideMenuPanel()
+        menuPanel?.orderOut(nil)
+        menuPanel = nil
+        hostingView = nil
         if let statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
@@ -135,19 +157,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if event.type == .rightMouseUp {
             showMenu(from: sender)
         } else {
-            togglePopover(from: sender)
+            togglePanel(from: sender)
         }
     }
 
-    private func togglePopover(from button: NSStatusBarButton) {
-        guard let popover else { return }
-        if popover.isShown {
-            popover.performClose(nil)
+    private func togglePanel(from button: NSStatusBarButton) {
+        guard let panel = menuPanel else { return }
+        if panel.isVisible {
+            hideMenuPanel()
         } else {
-            Self.refreshSignal.bump()
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            showMenuPanel(from: button)
         }
+    }
+
+    private func showMenuPanel(from button: NSStatusBarButton) {
+        guard let panel = menuPanel,
+              let hosting = hostingView,
+              let buttonWindow = button.window else { return }
+
+        Self.refreshSignal.bump()
+
+        // Size the panel to the SwiftUI content's preferred size before showing.
+        hosting.layoutSubtreeIfNeeded()
+        let contentSize = hosting.fittingSize
+        let finalSize = NSSize(
+            width: contentSize.width > 0 ? contentSize.width : 320,
+            height: contentSize.height > 0 ? contentSize.height : 520
+        )
+        panel.setContentSize(finalSize)
+
+        // Anchor flush below the status button: right edge aligned with the
+        // button's right edge, top edge touching the bottom of the menu bar.
+        let buttonRectInWindow = button.convert(button.bounds, to: nil)
+        let buttonRectInScreen = buttonWindow.convertToScreen(buttonRectInWindow)
+        let originX = buttonRectInScreen.maxX - finalSize.width
+        let originY = buttonRectInScreen.minY - finalSize.height
+        panel.setFrameOrigin(NSPoint(x: originX, y: originY))
+
+        panel.makeKeyAndOrderFront(nil)
+        button.highlight(true)
+        installEventMonitors()
+    }
+
+    private func hideMenuPanel() {
+        menuPanel?.orderOut(nil)
+        statusItem?.button?.highlight(false)
+        removeEventMonitors()
+    }
+
+    private func installEventMonitors() {
+        removeEventMonitors()
+        globalEventMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            guard let self else { return }
+            if !self.isPinned { self.hideMenuPanel() }
+        }
+        localEventMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.keyDown]
+        ) { [weak self] event in
+            if event.keyCode == 53 { // Escape
+                self?.hideMenuPanel()
+                return nil
+            }
+            return event
+        }
+    }
+
+    private func removeEventMonitors() {
+        if let m = globalEventMonitor { NSEvent.removeMonitor(m); globalEventMonitor = nil }
+        if let m = localEventMonitor  { NSEvent.removeMonitor(m);  localEventMonitor = nil  }
     }
 
     private func showMenu(from button: NSStatusBarButton) {
@@ -171,7 +250,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     @objc private func menuTogglePin() {
         isPinned.toggle()
-        popover?.behavior = isPinned ? .applicationDefined : .transient
     }
 
     @objc private func menuRefresh() {

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ContentView: View {
     @ObservedObject private var cableStore = CableStateStore.shared
@@ -16,6 +17,9 @@ struct ContentView: View {
                 mainContent
             }
         }
+        .frame(width: 320)
+        .fixedSize(horizontal: false, vertical: true)
+        .modifier(LiquidGlassBackground())
         .onAppear {
             cableStore.start()
         }
@@ -38,62 +42,55 @@ struct ContentView: View {
             if visiblePorts.isEmpty {
                 emptyState
             } else {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        let warningItems = visiblePorts.compactMap { port -> PortWarningItem? in
-                            let sources = cableStore.sources(for: port)
-                            let identities = cableStore.identities(for: port)
-                            guard let diagnostic = ChargingDiagnostic(port: port, sources: sources, identities: identities),
-                                  diagnostic.isWarning else {
-                                return nil
-                            }
-                            return PortWarningItem(
-                                id: port.id,
-                                portName: port.portDescription ?? port.serviceName,
-                                diagnostic: diagnostic
+                VStack(spacing: 12) {
+                    let warningItems = visiblePorts.compactMap { port -> PortWarningItem? in
+                        let sources = cableStore.sources(for: port)
+                        let identities = cableStore.identities(for: port)
+                        guard let diagnostic = ChargingDiagnostic(port: port, sources: sources, identities: identities),
+                              diagnostic.isWarning else {
+                            return nil
+                        }
+                        return PortWarningItem(
+                            id: port.id,
+                            portName: port.portDescription ?? port.serviceName,
+                            diagnostic: diagnostic
+                        )
+                    }
+                    ForEach(warningItems) { item in
+                        PortWarningBanner(item: item)
+                    }
+
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(), spacing: 8),
+                            GridItem(.flexible(), spacing: 8)
+                        ],
+                        spacing: 8
+                    ) {
+                        ForEach(visiblePorts) { port in
+                            PortCard(
+                                port: port,
+                                powerSources: cableStore.sources(for: port),
+                                identities: cableStore.identities(for: port)
                             )
                         }
-                        ForEach(warningItems) { item in
-                            PortWarningBanner(item: item)
-                        }
+                    }
 
-                        LazyVGrid(
-                            columns: [
-                                GridItem(.flexible(), spacing: 8),
-                                GridItem(.flexible(), spacing: 8)
-                            ],
-                            spacing: 8
-                        ) {
-                            ForEach(visiblePorts) { port in
-                                PortCard(
-                                    port: port,
-                                    powerSources: cableStore.sources(for: port),
-                                    identities: cableStore.identities(for: port)
-                                )
-                            }
-                        }
-
-                        if !cableStore.devices.isEmpty {
-                            USBDeviceList(devices: cableStore.devices)
-                        }
-
-                        if showAdvanced {
-                            ForEach(visiblePorts) { port in
-                                PortDetailsSection(
-                                    port: port,
-                                    powerSources: cableStore.sources(for: port),
-                                    identities: cableStore.identities(for: port)
-                                )
-                            }
+                    if showAdvanced {
+                        ForEach(visiblePorts) { port in
+                            PortDetailsSection(
+                                port: port,
+                                powerSources: cableStore.sources(for: port),
+                                identities: cableStore.identities(for: port)
+                            )
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 16)
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 16)
             }
         }
-        .background(.regularMaterial)
     }
 
     private var header: some View {
@@ -117,6 +114,15 @@ struct ContentView: View {
             }
             .buttonStyle(.borderless)
             .help("Settings")
+            if !settings.useMenuBarMode {
+                Button {
+                    NSApp.terminate(nil)
+                } label: {
+                    Image(systemName: "power")
+                }
+                .buttonStyle(.borderless)
+                .help("Quit \(AppInfo.name)")
+            }
         }
         .padding(.top, 16)
         .padding(.horizontal, 16)
@@ -139,4 +145,20 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+}
+
+private struct LiquidGlassBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content.glassEffect(
+                .regular,
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+        } else {
+            content.background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.regularMaterial)
+            )
+        }
+    }
 }

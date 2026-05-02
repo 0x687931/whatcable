@@ -2,109 +2,127 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>WhatCable. Port card</title>
+<title>WhatCable. Port tile</title>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./colors_and_type.css">
+<link rel="stylesheet" href="../colors_and_type.css">
 <style>
   :root { --font: "Geist", -apple-system, system-ui, sans-serif; }
-  body {
-    margin: 0; padding: 28px 32px;
-    background: #fff;
-    font-family: var(--font);
-    -webkit-font-smoothing: antialiased;
-  }
+  body { margin: 0; padding: 28px 32px; background: #fff; font-family: var(--font); -webkit-font-smoothing: antialiased; }
   *, *::before, *::after { box-sizing: border-box; }
 
-  .stack { display: flex; flex-direction: column; gap: 14px; max-width: 480px; }
+  .title { font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-tertiary); margin-bottom: 8px; }
+  .lede { font-size: 14px; color: var(--fg-secondary); line-height: 1.45; max-width: 560px; margin-bottom: 28px; }
+  .lede strong { color: var(--fg-primary); font-weight: 500; }
 
-  .card {
-    background: rgba(0,0,0,0.02);
-    border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 12px;
-    padding: 18px 18px;
-    display: flex; gap: 16px;
-    align-items: center;
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; max-width: 540px; }
+  .tile {
+    display: flex; flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+    min-height: 122px;
+    border-radius: 10px;
+    background: rgba(120, 120, 128, 0.08);
   }
-  .verdict-icon {
-    flex: 0 0 32px;
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    display: grid; place-items: center;
-    color: #fff;
-  }
-  .verdict-icon svg {
-    width: 18px; height: 18px;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    fill: none;
-    stroke: currentColor;
-  }
-  .v-good  { background: #34C759; }
-  .v-warn  { background: #FF9500; }
-  .v-bad   { background: #FF3B30; }
+  .tile.empty { background: rgba(120, 120, 128, 0.04); }
+  .tile-icon { width: 24px; height: 24px; display: grid; place-items: center; }
+  .tile-icon svg { width: 22px; height: 22px; }
+  .tile-name { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-tertiary); line-height: 1; }
+  .tile.empty .tile-name { color: var(--fg-quaternary); }
+  .tile-headline { font-size: 22px; font-weight: 500; color: var(--fg-primary); font-feature-settings: "tnum"; letter-spacing: -0.025em; line-height: 1.05; }
+  .tile.empty .tile-headline { color: var(--fg-tertiary); }
+  .tile-context { font-size: 12px; color: var(--fg-secondary); letter-spacing: -0.005em; line-height: 1.3; font-feature-settings: "tnum"; }
 
-  .meta {
-    font-size: 11px; font-weight: 500;
-    color: var(--fg-tertiary);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .h {
-    font-size: 16px; font-weight: 500;
-    color: var(--fg-primary);
-    letter-spacing: -0.01em;
-    margin-top: 4px;
-    line-height: 1.25;
-  }
-  .sub {
-    font-size: 13px;
-    color: var(--fg-secondary);
-    margin-top: 4px;
-    letter-spacing: -0.005em;
-    line-height: 1.4;
-  }
+  .label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-tertiary); margin: 28px 0 12px; }
+  .specs { font-size: 11px; color: var(--fg-secondary); line-height: 1.6; max-width: 540px; padding-left: 14px; }
+  .specs li { margin-bottom: 2px; }
+  .specs code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10px; color: var(--fg-primary); }
 </style>
 </head>
 <body>
-  <div class="stack">
+  <div class="title">Port tile</div>
+  <p class="lede">
+    <strong>One tile per port. Two columns, 122 px tall, 10 px radius.</strong> Icon · port name · big headline · short context line. Status colour rides on the icon and the headline length, never on the tile background.
+  </p>
 
-    <div class="card">
-      <div class="verdict-icon v-good" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><polyline points="6 12 10 16 18 8"/></svg>
-      </div>
-      <div>
-        <div class="meta">MagSafe</div>
-        <div class="h">Charging at 30 W</div>
-        <div class="sub">Charger and cable are working well together.</div>
-      </div>
+  <div class="grid">
+
+    <div class="tile">
+      <div class="tile-icon"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M13 2 4 14h6.5l-1 8 9.5-12h-6.5l1-8z" fill="#34C759"/></svg></div>
+      <div class="tile-name">MagSafe</div>
+      <div class="tile-headline">Charging well</div>
+      <div class="tile-context">30 W of 96 W</div>
     </div>
 
-    <div class="card">
-      <div class="verdict-icon v-warn" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 5v8" stroke-width="3"/>
-          <circle cx="12" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+    <div class="tile">
+      <div class="tile-icon"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M13 2 4 14h6.5l-1 8 9.5-12h-6.5l1-8z" fill="#FF9500"/></svg></div>
+      <div class="tile-name">USB-C 1</div>
+      <div class="tile-headline">Cable can't go faster</div>
+      <div class="tile-context">60 W of 96 W</div>
+    </div>
+
+    <div class="tile">
+      <div class="tile-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="rgba(0,0,0,0.85)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="20" r="1.6" fill="rgba(0,0,0,0.85)"/>
+          <path d="M12 20 V6"/><path d="M12 6 9.5 9 M12 6 14.5 9"/>
+          <path d="M12 12 7 14 V17"/><rect x="5.5" y="14" width="3" height="3" fill="rgba(0,0,0,0.85)" stroke="none"/>
+          <path d="M12 14 17 11 V8.5"/><circle cx="17" cy="7" r="1.4" fill="rgba(0,0,0,0.85)"/>
         </svg>
       </div>
-      <div>
-        <div class="meta">Thunderbolt 4</div>
-        <div class="h">Cable limited to 60 W</div>
-        <div class="sub">Your charger could go faster. this cable can't carry it.</div>
-      </div>
+      <div class="tile-name">USB-C 2</div>
+      <div class="tile-headline">Thunderbolt</div>
+      <div class="tile-context">40 Gbps</div>
     </div>
 
-    <div class="card">
-      <div class="verdict-icon v-bad" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg>
+    <div class="tile">
+      <div class="tile-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="rgba(0,0,0,0.85)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="20" r="1.6" fill="rgba(0,0,0,0.85)"/>
+          <path d="M12 20 V6"/><path d="M12 6 9.5 9 M12 6 14.5 9"/>
+          <path d="M12 12 7 14 V17"/><rect x="5.5" y="14" width="3" height="3" fill="rgba(0,0,0,0.85)" stroke="none"/>
+          <path d="M12 14 17 11 V8.5"/><circle cx="17" cy="7" r="1.4" fill="rgba(0,0,0,0.85)"/>
+        </svg>
       </div>
-      <div>
-        <div class="meta">Thunderbolt 4</div>
-        <div class="h">Cable not negotiating</div>
-        <div class="sub">Try a different cable. This one isn't responding to the charger.</div>
+      <div class="tile-name">USB-C 3</div>
+      <div class="tile-headline">USB device</div>
+      <div class="tile-context">5 Gbps</div>
+    </div>
+
+    <div class="tile">
+      <div class="tile-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="rgba(0,0,0,0.85)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 21h6M12 16v5"/>
+        </svg>
       </div>
+      <div class="tile-name">USB-C 4</div>
+      <div class="tile-headline">Display</div>
+      <div class="tile-context">DisplayPort</div>
+    </div>
+
+    <div class="tile empty">
+      <div class="tile-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="rgba(60,60,67,0.30)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 3v6M15 3v6"/><path d="M5 9h14v3a7 7 0 0 1-14 0z"/><path d="M12 16v5"/>
+        </svg>
+      </div>
+      <div class="tile-name">USB-C 5</div>
+      <div class="tile-headline">Empty</div>
     </div>
 
   </div>
+
+  <div class="label">Headline copy. all six states</div>
+  <ul class="specs">
+    <li><code>Empty</code>. nothing plugged in</li>
+    <li><code>Charging well</code>. green bolt. context shows watts</li>
+    <li><code>Cable can't go faster</code>. orange bolt. cable rated below charger</li>
+    <li><code>Charging slower than possible</code>. orange bolt. Mac asking for less</li>
+    <li><code>Cable not rated</code>. orange bolt. unknown e-marker</li>
+    <li><code>Checking charger</code>. orange bolt. negotiation pending</li>
+    <li><code>USB device</code> / <code>Slow USB</code>. cable trident</li>
+    <li><code>Thunderbolt</code> / <code>Display</code>. cable / monitor</li>
+    <li><code>Connected</code>. fallback when nothing else fits</li>
+  </ul>
 </body>
 </html>

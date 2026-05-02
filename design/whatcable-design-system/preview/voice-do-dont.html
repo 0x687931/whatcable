@@ -4,65 +4,79 @@
 <meta charset="utf-8">
 <title>WhatCable. Voice & copy</title>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./colors_and_type.css">
+<link rel="stylesheet" href="../colors_and_type.css">
 <style>
   :root { --font: "Geist", -apple-system, system-ui, sans-serif; }
-  body {
-    margin: 0; padding: 28px 32px;
-    background: #fff;
-    font-family: var(--font);
-    -webkit-font-smoothing: antialiased;
-  }
+  body { margin: 0; padding: 28px 32px; background: #fff; font-family: var(--font); -webkit-font-smoothing: antialiased; }
   *, *::before, *::after { box-sizing: border-box; }
 
-  .principle {
-    font-size: 16px;
-    color: var(--fg-primary);
-    letter-spacing: -0.01em;
-    line-height: 1.45;
-    margin-bottom: 24px;
-    max-width: 560px;
-  }
-  .principle strong { font-weight: 600; }
+  .title { font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-tertiary); margin-bottom: 8px; }
+  .lede { font-size: 14px; color: var(--fg-primary); line-height: 1.45; max-width: 620px; margin-bottom: 32px; }
+  .lede strong { font-weight: 600; }
 
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
-  }
-  .col-label {
-    font-size: 10px; font-weight: 500;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--fg-tertiary);
-    margin-bottom: 14px;
-  }
+  .label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-tertiary); margin: 28px 0 14px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; max-width: 720px; }
+  .col-label { font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--fg-tertiary); margin-bottom: 14px; }
   .quote {
-    font-size: 14px;
-    line-height: 1.4;
-    letter-spacing: -0.005em;
+    font-size: 14px; line-height: 1.4;
     padding: 10px 0;
     border-top: 1px solid rgba(0,0,0,0.06);
     color: var(--fg-primary);
   }
   .quote:first-of-type { border-top: 0; }
   .col.no .quote { color: var(--fg-tertiary); }
+
+  .reg-grid { display: grid; grid-template-columns: 110px 1fr 1fr; gap: 18px; align-items: baseline; max-width: 720px; }
+  .reg-grid .name { font-size: 11px; font-weight: 500; color: var(--fg-tertiary); letter-spacing: 0.04em; text-transform: uppercase; padding: 12px 0; border-top: 1px solid rgba(0,0,0,0.06); }
+  .reg-grid .ex { font-size: 13px; color: var(--fg-primary); padding: 12px 0; border-top: 1px solid rgba(0,0,0,0.06); line-height: 1.4; }
+  .reg-grid .ex.short { font-size: 14px; font-weight: 500; }
+  .reg-grid > div:nth-child(-n+3) { border-top: 0; }
 </style>
 </head>
 <body>
 
-  <div class="principle">
-    <strong>Plain English. No jargon, no exclamation marks.</strong> Tell people what's happening and what it means for them. Write like a knowledgeable friend, not a spec sheet.
+  <div class="title">Voice & copy</div>
+  <p class="lede">
+    <strong>Plain English. No jargon. No exclamation marks.</strong> Tell people what's happening and what it means for them. Two registers: short tile copy, longer body for banners and details.
+  </p>
+
+  <div class="label">Two registers</div>
+  <div class="reg-grid">
+    <div class="name">Tile copy</div>
+    <div class="ex short">Cable can't go faster</div>
+    <div class="ex short">60 W of 96 W</div>
+
+    <div class="name"></div>
+    <div class="ex short">Charging well</div>
+    <div class="ex short">30 W of 96 W</div>
+
+    <div class="name"></div>
+    <div class="ex short">USB device</div>
+    <div class="ex short">5 Gbps</div>
+
+    <div class="name">Banner copy</div>
+    <div class="ex">Cable is limiting charging speed</div>
+    <div class="ex">Charger can deliver up to 96 W, but this cable is only rated to carry 60 W. Replace the cable to charge faster.</div>
+
+    <div class="name"></div>
+    <div class="ex">Charging well at 30 W</div>
+    <div class="ex">Charger and cable are well-matched.</div>
   </div>
 
+  <p class="lede" style="margin-top: 32px; font-size: 12px; color: var(--fg-secondary);">
+    <strong style="color: var(--fg-primary);">Tile</strong> is the verdict, three to four words tops. <strong style="color: var(--fg-primary);">Banner</strong> states the verdict first, then the reason and what to do. Numbers go in the tile context; long numbers stay out of headlines.
+  </p>
+
+  <div class="label">Do · don't</div>
   <div class="grid">
     <div class="col">
       <div class="col-label">Do</div>
-      <div class="quote">Charging well at 30 W</div>
-      <div class="quote">This cable can't go faster than 60 W</div>
+      <div class="quote">Charging well</div>
+      <div class="quote">Cable can't go faster</div>
+      <div class="quote">60 W of 96 W</div>
       <div class="quote">Plug a cable in to see what it can do</div>
-      <div class="quote">Cable connected upside down. that's fine</div>
-      <div class="quote">Your charger could go up to 45 W. Your laptop isn't asking for it.</div>
+      <div class="quote">Your charger could go up to 45 W. Your Mac isn't asking for it.</div>
     </div>
     <div class="col no">
       <div class="col-label">Don't</div>

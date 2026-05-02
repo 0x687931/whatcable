@@ -6,43 +6,124 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="././colors_and_type.css">
+<link rel="stylesheet" href="../../colors_and_type.css">
 <style>
   :root {
     --font-display: "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
     --font-num: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
   }
+  html, body { height: 100%; }
   body {
-    margin: 0; min-height: 100vh;
-    background: linear-gradient(180deg, #C9D2DB 0%, #8794A2 100%);
-    display: grid; place-items: center; padding: 40px 20px 60px;
+    margin: 0;
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
+    overflow: hidden;
   }
   *, *::before, *::after { box-sizing: border-box; }
-  .popover { position: relative; width: 320px; }
-  .arrow {
-    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
-    width: 22px; height: 11px;
-    background: rgba(252,252,253,0.97);
-    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+
+  /* CANVAS — split into two wallpaper stages so reviewers see Liquid Glass adapting */
+  .canvas {
+    position: fixed; inset: 0;
+    display: grid; grid-template-columns: 1fr 1fr;
   }
+  .stage {
+    position: relative; overflow: hidden;
+  }
+  .stage-light {
+    background:
+      radial-gradient(110% 80% at 25% 15%, #E6ECFF 0%, transparent 55%),
+      radial-gradient(100% 70% at 75% 65%, #F4DCEC 0%, transparent 55%),
+      linear-gradient(180deg, #CBD8F1 0%, #B7AAD8 100%);
+  }
+  .stage-dark {
+    background:
+      radial-gradient(110% 80% at 30% 18%, #2B2A5E 0%, transparent 55%),
+      radial-gradient(100% 70% at 75% 70%, #4D1E48 0%, transparent 55%),
+      linear-gradient(180deg, #181731 0%, #0C0B1D 100%);
+  }
+
+  /* MENU BAR — translucent strip with hairline + active menu-extra */
+  .menubar {
+    position: absolute; top: 0; left: 0; right: 0; height: 26px;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding: 0 6px; gap: 10px;
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    z-index: 2;
+    font-size: 12px;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.005em;
+  }
+  .stage-light .menubar {
+    background: rgba(255,255,255,0.42);
+    border-bottom: 0.5px solid rgba(0,0,0,0.10);
+    color: rgba(0,0,0,0.80);
+  }
+  .stage-dark .menubar {
+    background: rgba(18,18,28,0.42);
+    border-bottom: 0.5px solid rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.88);
+  }
+  .clock { padding: 0 4px; }
+  .menu-extra {
+    display: grid; place-items: center;
+    height: 20px; min-width: 22px;
+    padding: 0 5px;
+    border-radius: 5px;
+    cursor: default;
+  }
+  .menu-extra svg { display: block; }
+  .stage-light .menu-extra.active {
+    background: rgba(0,0,0,0.10);
+    color: rgba(0,0,0,0.88);
+  }
+  .stage-dark .menu-extra.active {
+    background: rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.96);
+  }
+
+  /* POPOVER HOST — flush under the active menu-extra, no chevron */
+  .popover-host {
+    position: absolute; top: 26px; right: 6px;
+    z-index: 3;
+  }
+
+  /* React mounts the popover into .popover-mount; keep it bare so .popover sizes itself */
+  .popover-mount { display: contents; }
+
+  /* POPOVER FRAME (matches App.jsx markup) */
+  .popover { position: relative; width: 320px; }
+
+  /* LIQUID GLASS — adaptive material that picks up wallpaper tint */
   .window {
-    background: rgba(252,252,253,0.97);
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
     border-radius: 14px;
     overflow: hidden;
-    box-shadow:
-      0 22px 60px rgba(0,0,0,0.30),
-      0 4px 14px rgba(0,0,0,0.12),
-      inset 0 0 0 0.5px rgba(0,0,0,0.10);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
   }
+  .stage-light .window {
+    background: rgba(252,252,253,0.55);
+    box-shadow:
+      inset 0 0.5px 0 rgba(255,255,255,0.70),
+      inset 0 0 0 0.5px rgba(0,0,0,0.10),
+      0 22px 60px rgba(0,0,0,0.30),
+      0 4px 14px rgba(0,0,0,0.12);
+  }
+  .stage-dark .window {
+    background: rgba(28,28,32,0.55);
+    box-shadow:
+      inset 0 0.5px 0 rgba(255,255,255,0.18),
+      inset 0 0 0 0.5px rgba(255,255,255,0.08),
+      0 22px 60px rgba(0,0,0,0.55),
+      0 4px 14px rgba(0,0,0,0.35);
+  }
+
+  /* HEADER */
   .header {
     display: flex; align-items: center;
-    padding: 18px 22px 6px;
+    padding: 16px 16px 8px;
   }
-  .title {
+  .wordmark {
     font-family: var(--font-display);
     font-size: 10px; font-weight: 500;
     letter-spacing: 0.16em;
@@ -59,104 +140,154 @@
   }
   .iconbtn:hover { color: var(--fg-primary); }
 
-  .body { padding: 6px 10px 12px; }
+  /* BODY */
+  .body { padding: 4px 16px 16px; }
 
+  /* PORT WARNING BANNER */
+  .pw {
+    margin-bottom: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .pw-label {
+    font-family: var(--font-display);
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--fg-tertiary);
+  }
+
+  /* DIAGNOSTIC BANNER */
+  .diag {
+    display: flex; gap: 10px;
+    align-items: flex-start;
+    padding: 12px;
+    border-radius: 8px;
+  }
+  .diag-warn { background: rgba(255, 149, 0, 0.10); }
+  .diag-ok   { background: rgba(52, 199, 89, 0.10); }
+  .diag-badge {
+    flex: 0 0 24px;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: white;
+    margin-top: 1px;
+  }
+  .diag-warn .diag-badge { background: #FF9500; }
+  .diag-ok   .diag-badge { background: #34C759; }
+  .diag-badge svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .diag-summary {
+    font-size: 12px; font-weight: 600;
+    color: var(--fg-primary);
+    letter-spacing: -0.005em;
+    line-height: 1.3;
+  }
+  .diag-detail {
+    font-size: 11px;
+    color: var(--fg-secondary);
+    letter-spacing: -0.005em;
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+
+  /* TILE GRID — always visible, never scrolls */
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 2px;
-    padding: 4px 10px 14px;
+    gap: 8px;
   }
   .tile {
     display: flex; flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
-    padding: 16px 14px 14px;
-    border-radius: 8px;
+    gap: 8px;
+    padding: 12px;
+    min-height: 122px;
+    border-radius: 10px;
+    background: rgba(120, 120, 128, 0.08);
   }
+  .tile.empty { background: rgba(120, 120, 128, 0.04); }
   .tile-icon {
     display: grid; place-items: center;
     width: 24px; height: 24px;
-    margin-bottom: 4px;
   }
+  .tile-icon svg { width: 22px; height: 22px; }
   .tile-name {
     font-family: var(--font-display);
-    font-size: 11px; font-weight: 500;
-    color: var(--fg-tertiary);
-    letter-spacing: 0.04em;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
+    color: var(--fg-tertiary);
     line-height: 1;
   }
-  .tile-value {
+  .tile.empty .tile-name { color: var(--fg-quaternary); }
+  .tile-headline {
     font-family: var(--font-display);
     font-size: 22px; font-weight: 500;
     color: var(--fg-primary);
     font-feature-settings: "tnum";
     letter-spacing: -0.025em;
-    line-height: 1;
+    line-height: 1.05;
   }
-  .tile-verdict {
+  .tile.empty .tile-headline { color: var(--fg-tertiary); }
+  .tile-context {
     font-family: var(--font-display);
     font-size: 12px; font-weight: 400;
     color: var(--fg-secondary);
     letter-spacing: -0.005em;
     line-height: 1.3;
-  }
-  .tile.muted .tile-value,
-  .tile.muted .tile-verdict { color: var(--fg-tertiary); }
-
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 12px;
-    border-top: 1px solid rgba(0,0,0,0.06);
-    width: 100%;
-  }
-  .row:first-child { border-top: 0; }
-
-  .row-icon {
-    flex: 0 0 28px;
-    display: grid; place-items: center;
-  }
-  .row-text {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex; flex-direction: column;
-    gap: 3px;
-  }
-  .row-name-main {
-    font-family: var(--font-display);
-    font-size: 14px; font-weight: 500;
-    color: var(--fg-primary);
-    letter-spacing: -0.01em;
-    line-height: 1.2;
-  }
-  .row-verdict {
-    font-family: var(--font-display);
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--fg-secondary);
-    letter-spacing: -0.005em;
-    line-height: 1.3;
-  }
-  .row-value {
-    flex: 0 0 auto;
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--fg-primary);
     font-feature-settings: "tnum";
-    letter-spacing: -0.01em;
-    white-space: nowrap;
   }
-  .row.muted .row-name-main,
-  .row.muted .row-value,
-  .row.muted .row-verdict { color: var(--fg-tertiary); }
+  .tile.empty .tile-context { color: var(--fg-tertiary); }
+
+  /* DARK STAGE — recolour foreground tokens so the popover stays legible on dark glass */
+  .stage-dark .wordmark { color: rgba(255,255,255,0.55); }
+  .stage-dark .iconbtn { color: rgba(255,255,255,0.70); }
+  .stage-dark .iconbtn:hover { color: rgba(255,255,255,0.95); }
+  .stage-dark .pw-label { color: rgba(255,255,255,0.55); }
+  .stage-dark .diag-summary { color: rgba(255,255,255,0.95); }
+  .stage-dark .diag-detail { color: rgba(255,255,255,0.72); }
+  .stage-dark .tile { background: rgba(255,255,255,0.07); }
+  .stage-dark .tile.empty { background: rgba(255,255,255,0.03); }
+  .stage-dark .tile-name { color: rgba(255,255,255,0.55); }
+  .stage-dark .tile.empty .tile-name { color: rgba(255,255,255,0.35); }
+  .stage-dark .tile-headline { color: rgba(255,255,255,0.96); }
+  .stage-dark .tile.empty .tile-headline { color: rgba(255,255,255,0.55); }
+  .stage-dark .tile-context { color: rgba(255,255,255,0.70); }
+  .stage-dark .tile.empty .tile-context { color: rgba(255,255,255,0.48); }
 </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div class="canvas">
+    <!-- LIGHT WALLPAPER STAGE -->
+    <section class="stage stage-light">
+      <div class="menubar">
+        <span class="clock">9:41</span>
+        <span class="menu-extra active" title="WhatCable">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M13 2 4 14h6.5l-1 8 9.5-12h-6.5l1-8z" fill="currentColor"/>
+          </svg>
+        </span>
+      </div>
+      <div class="popover-host">
+        <div class="popover-mount"></div>
+      </div>
+    </section>
+
+    <!-- DARK WALLPAPER STAGE -->
+    <section class="stage stage-dark">
+      <div class="menubar">
+        <span class="clock">9:41</span>
+        <span class="menu-extra active" title="WhatCable">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M13 2 4 14h6.5l-1 8 9.5-12h-6.5l1-8z" fill="currentColor"/>
+          </svg>
+        </span>
+      </div>
+      <div class="popover-host">
+        <div class="popover-mount"></div>
+      </div>
+    </section>
+  </div>
+
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
