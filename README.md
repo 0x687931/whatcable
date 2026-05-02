@@ -6,6 +6,8 @@ A small macOS menu bar app that tells you, in plain English, what each USB-C cab
 
 USB-C hides a lot under one connector. Anything from a USB 2.0 charge-only cable to a 240W / 40 Gbps Thunderbolt 4 cable, all looking identical in your drawer. macOS already exposes the relevant info via IOKit; WhatCable surfaces it as a friendly menu bar popover.
 
+This repository is the standalone maintained WhatCable project at [`0x687931/whatcable`](https://github.com/0x687931/whatcable). Releases, update checks, issues, and pull requests are handled here.
+
 [![Latest release](https://img.shields.io/github/v/release/0x687931/whatcable)](https://github.com/0x687931/whatcable/releases/latest)
 [![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://github.com/0x687931/whatcable)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -103,10 +105,10 @@ cp .env.example .env
 
 Issues and PRs welcome. The code is small and tries to stay readable — start at [`Sources/WhatCable/ContentView.swift`](Sources/WhatCable/ContentView.swift) for the UI, [`PortSummary.swift`](Sources/WhatCable/PortSummary.swift) for the plain-English logic, or [`PDVDO.swift`](Sources/WhatCable/PDVDO.swift) for the bit-twiddling.
 
-## Credits
+## Credits and License
 
 Built by WhatCable contributors.
 
-Based on the original [WhatCable](https://github.com/darrylmorley/whatcable) by [Darryl Morley](https://github.com/darrylmorley), licensed under the MIT License.
+WhatCable includes MIT-licensed work from the original [WhatCable](https://github.com/darrylmorley/whatcable) project by [Darryl Morley](https://github.com/darrylmorley). See [LICENSE](LICENSE) for the full copyright and permission notice.
 
 Inspired by every time someone has asked "*is this cable any good?*".

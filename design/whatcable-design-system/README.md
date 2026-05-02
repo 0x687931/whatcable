@@ -25,7 +25,7 @@ Every screen in WhatCable should pass these four tests:
 | `assets/` | Icon notes and the reference popover screenshot. |
 | `preview/` | One card per design-system surface (type, colour, voice, components). Registered for review. |
 | `ui_kits/macos_popover/` | Click-through HTML recreation of the menubar popover. |
-| `Sources/WhatCable/` | The original SwiftUI source, kept for reference. |
+| `Sources/WhatCable/` | The production SwiftUI source, kept as the implementation reference. |
 | `SKILL.md` | One-paragraph brief for picking up this system in a new chat. |
 
 ---
@@ -149,4 +149,4 @@ Drawn at 24 px on a 1.5 px stroke, Lucide for utility, official trident for data
 
 ## Source
 
-Codebase: `0x687931/whatcable` on GitHub (MIT). Author: Darryl Morley. The repo is the only source of truth. there's no Figma, no separate brand guidelines, no marketing site.
+Codebase: `0x687931/whatcable` on GitHub (MIT). Maintained by WhatCable contributors. The repo is the only source of truth. there's no Figma, no separate brand guidelines, no marketing site.

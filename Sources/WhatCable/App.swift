@@ -433,8 +433,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         Built by \(AppInfo.credit).
 
         Open source attribution:
-        Based on WhatCable by \(AppInfo.upstreamCredit).
-        Original project: \(AppInfo.upstreamURL)
+        Includes MIT-licensed work from the original WhatCable project by \(AppInfo.originalAuthor).
+        Original project: \(AppInfo.originalProjectURL)
         License: MIT License.
 
         Third-party runtime libraries:
