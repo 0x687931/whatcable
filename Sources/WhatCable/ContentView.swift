@@ -42,53 +42,55 @@ struct ContentView: View {
             if visiblePorts.isEmpty {
                 emptyState
             } else {
-                VStack(spacing: 12) {
-                    let warningItems = visiblePorts.compactMap { port -> PortWarningItem? in
-                        let sources = cableStore.sources(for: port)
-                        let identities = cableStore.identities(for: port)
-                        guard let diagnostic = ChargingDiagnostic(port: port, sources: sources, identities: identities),
-                              diagnostic.isWarning else {
-                            return nil
-                        }
-                        return PortWarningItem(
-                            id: port.id,
-                            portName: port.portDescription ?? port.serviceName,
-                            diagnostic: diagnostic
-                        )
-                    }
-                    ForEach(warningItems) { item in
-                        PortWarningBanner(item: item)
-                    }
-
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible(), spacing: 8),
-                            GridItem(.flexible(), spacing: 8)
-                        ],
-                        spacing: 8
-                    ) {
-                        ForEach(visiblePorts) { port in
-                            PortCard(
-                                port: port,
-                                powerSources: cableStore.sources(for: port),
-                                identities: cableStore.identities(for: port)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        let warningItems = visiblePorts.compactMap { port -> PortWarningItem? in
+                            let sources = cableStore.sources(for: port)
+                            let identities = cableStore.identities(for: port)
+                            guard let diagnostic = ChargingDiagnostic(port: port, sources: sources, identities: identities),
+                                  diagnostic.isWarning else {
+                                return nil
+                            }
+                            return PortWarningItem(
+                                id: port.id,
+                                portName: port.portDescription ?? port.serviceName,
+                                diagnostic: diagnostic
                             )
                         }
-                    }
+                        ForEach(warningItems) { item in
+                            PortWarningBanner(item: item)
+                        }
 
-                    if showAdvanced {
-                        ForEach(visiblePorts) { port in
-                            PortDetailsSection(
-                                port: port,
-                                powerSources: cableStore.sources(for: port),
-                                identities: cableStore.identities(for: port)
-                            )
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: 8),
+                                GridItem(.flexible(), spacing: 8)
+                            ],
+                            spacing: 8
+                        ) {
+                            ForEach(visiblePorts) { port in
+                                PortCard(
+                                    port: port,
+                                    powerSources: cableStore.sources(for: port),
+                                    identities: cableStore.identities(for: port)
+                                )
+                            }
+                        }
+
+                        if showAdvanced {
+                            ForEach(visiblePorts) { port in
+                                PortDetailsSection(
+                                    port: port,
+                                    powerSources: cableStore.sources(for: port),
+                                    identities: cableStore.identities(for: port)
+                                )
+                            }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 16)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 4)
-                .padding(.bottom, 16)
             }
         }
     }
@@ -150,6 +152,7 @@ struct ContentView: View {
 
 private struct LiquidGlassBackground: ViewModifier {
     func body(content: Content) -> some View {
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             content.glassEffect(
                 .regular,
@@ -161,5 +164,11 @@ private struct LiquidGlassBackground: ViewModifier {
                     .fill(.regularMaterial)
             )
         }
+        #else
+        content.background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        #endif
     }
 }

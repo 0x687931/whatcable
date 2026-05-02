@@ -16,6 +16,9 @@ struct WhatCableApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     static let refreshSignal = RefreshSignal()
+    private static let panelWidth: CGFloat = 320
+    private static let fallbackPanelHeight: CGFloat = 420
+    private static let screenPadding: CGFloat = 8
 
     // Menu bar mode
     private var statusItem: NSStatusItem?
@@ -86,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func buildMenuPanel() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.fallbackPanelHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -128,11 +131,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         guard let panel = menuPanel else { return }
         var frame = panel.frame
         let oldHeight = frame.size.height
-        guard frame.size != size else { return }
-        frame.size = size
+        let maxHeight = maxPanelHeight(
+            below: panel.isVisible ? frame.maxY : nil,
+            on: panel.screen
+        )
+        let clampedSize = clampedPanelSize(size, maxHeight: maxHeight)
+        guard frame.size != clampedSize else { return }
+        frame.size = clampedSize
         // Keep top edge anchored: origin.y + height stays constant.
-        frame.origin.y += oldHeight - size.height
+        frame.origin.y += oldHeight - clampedSize.height
         panel.setFrame(frame, display: true, animate: panel.isVisible)
+    }
+
+    private func clampedPanelSize(_ preferred: NSSize, maxHeight: CGFloat) -> NSSize {
+        let width = preferred.width > 0 ? preferred.width : Self.panelWidth
+        let height = preferred.height > 0 ? preferred.height : Self.fallbackPanelHeight
+        return NSSize(
+            width: max(Self.panelWidth, width),
+            height: min(height, maxHeight)
+        )
+    }
+
+    private func maxPanelHeight(below topY: CGFloat? = nil, on screen: NSScreen?) -> CGFloat {
+        let visibleFrame = (screen ?? NSScreen.main)?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: Self.panelWidth, height: Self.fallbackPanelHeight)
+        let anchoredTopY = topY ?? visibleFrame.maxY
+        return max(1, anchoredTopY - visibleFrame.minY - Self.screenPadding)
     }
 
     private func tearDownMenuBarMode() {
@@ -204,16 +228,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Size the panel to SwiftUI's preferred content size before showing.
         controller.view.layoutSubtreeIfNeeded()
         let preferred = controller.preferredContentSize
-        let finalSize = NSSize(
-            width: preferred.width > 0 ? preferred.width : 320,
-            height: preferred.height > 0 ? preferred.height : 420
+        let buttonRectInWindow = button.convert(button.bounds, to: nil)
+        let buttonRectInScreen = buttonWindow.convertToScreen(buttonRectInWindow)
+        let maxHeight = maxPanelHeight(
+            below: buttonRectInScreen.minY,
+            on: buttonWindow.screen
         )
+        let finalSize = clampedPanelSize(preferred, maxHeight: maxHeight)
         panel.setContentSize(finalSize)
 
         // Anchor flush below the status button: right edge aligned with the
         // button's right edge, top edge touching the bottom of the menu bar.
-        let buttonRectInWindow = button.convert(button.bounds, to: nil)
-        let buttonRectInScreen = buttonWindow.convertToScreen(buttonRectInWindow)
         let originX = buttonRectInScreen.maxX - finalSize.width
         let originY = buttonRectInScreen.minY - finalSize.height
         panel.setFrameOrigin(NSPoint(x: originX, y: originY))
