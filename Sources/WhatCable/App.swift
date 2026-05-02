@@ -20,7 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // Menu bar mode
     private var statusItem: NSStatusItem?
     private var menuPanel: NSPanel?
-    private var hostingView: NSHostingView<AnyView>?
+    private var hostingController: NSHostingController<AnyView>?
+    private var contentSizeObservation: NSKeyValueObservation?
     private var globalEventMonitor: Any?
     private var localEventMonitor: Any?
     private var isPinned = false
@@ -103,21 +104,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // ContentView. The panel itself is a transparent host; the rounded-rect
         // glass shape provides the visible chrome and the panel shadow follows
         // the content alpha.
-        let hosting = NSHostingView(
+        let controller = NSHostingController(
             rootView: AnyView(ContentView().environmentObject(Self.refreshSignal))
         )
-        hosting.sizingOptions = .preferredContentSize
+        controller.sizingOptions = .preferredContentSize
+        panel.contentViewController = controller
 
-        panel.contentView = hosting
+        // Track SwiftUI's preferred content size so the panel grows/shrinks as
+        // the user toggles "Show technical details" or expands a port detail
+        // accordion — keeping the top edge anchored to the menu bar.
+        contentSizeObservation = controller.observe(
+            \.preferredContentSize, options: [.new]
+        ) { [weak self] _, change in
+            guard let new = change.newValue, new.width > 0, new.height > 0 else { return }
+            Task { @MainActor [weak self] in self?.syncPanelSize(to: new) }
+        }
+
         self.menuPanel = panel
-        self.hostingView = hosting
+        self.hostingController = controller
+    }
+
+    private func syncPanelSize(to size: NSSize) {
+        guard let panel = menuPanel else { return }
+        var frame = panel.frame
+        let oldHeight = frame.size.height
+        guard frame.size != size else { return }
+        frame.size = size
+        // Keep top edge anchored: origin.y + height stays constant.
+        frame.origin.y += oldHeight - size.height
+        panel.setFrame(frame, display: true, animate: panel.isVisible)
     }
 
     private func tearDownMenuBarMode() {
         hideMenuPanel()
+        contentSizeObservation?.invalidate()
+        contentSizeObservation = nil
         menuPanel?.orderOut(nil)
         menuPanel = nil
-        hostingView = nil
+        hostingController = nil
         if let statusItem {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
@@ -172,17 +196,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     private func showMenuPanel(from button: NSStatusBarButton) {
         guard let panel = menuPanel,
-              let hosting = hostingView,
+              let controller = hostingController,
               let buttonWindow = button.window else { return }
 
         Self.refreshSignal.bump()
 
-        // Size the panel to the SwiftUI content's preferred size before showing.
-        hosting.layoutSubtreeIfNeeded()
-        let contentSize = hosting.fittingSize
+        // Size the panel to SwiftUI's preferred content size before showing.
+        controller.view.layoutSubtreeIfNeeded()
+        let preferred = controller.preferredContentSize
         let finalSize = NSSize(
-            width: contentSize.width > 0 ? contentSize.width : 320,
-            height: contentSize.height > 0 ? contentSize.height : 520
+            width: preferred.width > 0 ? preferred.width : 320,
+            height: preferred.height > 0 ? preferred.height : 420
         )
         panel.setContentSize(finalSize)
 

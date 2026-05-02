@@ -82,10 +82,11 @@ struct GreenSwitchToggleStyle: ToggleStyle {
                     .shadow(color: .black.opacity(0.18), radius: 1, y: 0.5)
             }
             .animation(.easeInOut(duration: 0.16), value: configuration.isOn)
-            .onTapGesture {
-                configuration.isOn.toggle()
-            }
         }
         .contentShape(Rectangle())
+        .onTapGesture { configuration.isOn.toggle() }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityValue(configuration.isOn ? Text("On") : Text("Off"))
     }
 }

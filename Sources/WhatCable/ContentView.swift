@@ -142,7 +142,8 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 48)
     }
 
 }
