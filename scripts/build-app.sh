@@ -19,8 +19,8 @@ fi
 
 APP_NAME="WhatCable"
 BUNDLE_ID="com.bitmoor.whatcable"
-VERSION="0.4.3"
-BUILD_NUMBER="9"
+VERSION="1.0.0"
+BUILD_NUMBER="10"
 MIN_OS="14.0"
 
 DEVELOPER_ID="${DEVELOPER_ID:-}"
