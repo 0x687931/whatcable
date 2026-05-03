@@ -77,7 +77,7 @@ WhatCable looks quiet. The popover is a tile grid: one tile per port, status car
 - **2-column tile grid**, 8 px gap, 122 px min-height per tile, 10 px radius.
 - **Header**: tracked uppercase wordmark · settings. No icon, no tagline.
 - **Warning banners promoted** to the top of the scroll view when a port is in trouble.
-- **Technical details** appear only for an Option-clicked popover session, stacked below the grid rather than inline in tiles.
+- **Context menu** opens on right-click or Option-click for pin, updates, About, and Quit.
 
 ### Type
 Geist for everything (Vercel, free, Google Fonts). Five roles, sized to the tile grid:

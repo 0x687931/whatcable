@@ -53,7 +53,7 @@ final class UpdateChecker: ObservableObject {
         request.setValue("WhatCable/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 15
 
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             Task { @MainActor in
                 guard let self else { return }
                 self.isChecking = false
@@ -64,6 +64,18 @@ final class UpdateChecker: ObservableObject {
                 if let error {
                     Self.log.error("Update check failed: \(error.localizedDescription, privacy: .public)")
                     if visible { self.showAlert(title: "Couldn't check for updates", message: error.localizedDescription) }
+                    return
+                }
+
+                if let http = response as? HTTPURLResponse,
+                   !Self.successfulStatusCodes.contains(http.statusCode) {
+                    self.available = nil
+                    if visible {
+                        self.showAlert(
+                            title: http.statusCode == 404 ? "No updates available" : "Couldn't check for updates",
+                            message: Self.message(forHTTPStatus: http.statusCode, data: data)
+                        )
+                    }
                     return
                 }
 
@@ -115,6 +127,23 @@ final class UpdateChecker: ObservableObject {
         alert.runModal()
 
         NSApp.setActivationPolicy(originalPolicy)
+    }
+
+    private nonisolated static let successfulStatusCodes = 200..<300
+
+    nonisolated static func message(forHTTPStatus statusCode: Int, data: Data?) -> String {
+        if statusCode == 404 {
+            return "No public releases have been published for 0x687931/whatcable yet."
+        }
+
+        let githubMessage = data.flatMap { data -> String? in
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+            return json["message"] as? String
+        }
+        if let githubMessage, !githubMessage.isEmpty {
+            return "GitHub returned HTTP \(statusCode): \(githubMessage)"
+        }
+        return "GitHub returned HTTP \(statusCode)."
     }
 
     /// Compare dot-separated numeric versions. Non-numeric segments compare lexically.

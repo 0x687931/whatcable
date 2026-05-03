@@ -173,11 +173,11 @@ struct PortCard: View {
     }
 
     private var chargerW: Int? {
-        guard let usbPD = powerSources.first(where: { $0.name == "USB-PD" }),
-              usbPD.maxPowerMW > 0 else {
+        guard let source = PowerSource.preferredChargingSource(in: powerSources),
+              source.maxPowerMW > 0 else {
             return nil
         }
-        return Int((Double(usbPD.maxPowerMW) / 1000).rounded())
+        return Int((Double(source.maxPowerMW) / 1000).rounded())
     }
 
     private func speedValue(for speed: PDVDO.CableSpeed) -> String {

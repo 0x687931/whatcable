@@ -27,9 +27,8 @@ Per port, in plain English:
 - **Charger PDO list** — every voltage profile the charger advertises (5V / 9V / 12V / 15V / 20V…) with the currently negotiated profile highlighted in real time
 - **Connected device identity** — vendor name and product type, decoded from the PD Discover Identity response
 - **Active transports** — USB 2 / USB 3 / Thunderbolt / DisplayPort
-- **Technical details on demand** — ⌥-click the menu bar icon to reveal the underlying IOKit properties for that popover session
 
-Right-click the menu bar icon for a **Keep window open** toggle (handy for screenshots and demos), **Check for Updates**, **About**, and **Quit**.
+Right-click or ⌥-click the menu bar icon for a **Keep window open** toggle (handy for screenshots and demos), **Check for Updates**, **About**, and **Quit**.
 
 ## Install
 
@@ -71,7 +70,7 @@ Produces a universal `dist/WhatCable.app` (arm64 + x86_64) and `dist/WhatCable.z
 
 | Configuration | Result |
 | --- | --- |
-| No `.env` | Ad-hoc signed. Works locally; Gatekeeper warns on other Macs. |
+| No `.env` | Ad-hoc signed. Works locally; Gatekeeper warns on first manual install. Ad-hoc self-updates are allowed only from another ad-hoc WhatCable build with the same bundle identity. |
 | `.env` with `DEVELOPER_ID` | Developer ID signed + hardened runtime. |
 | `.env` with `DEVELOPER_ID` + `NOTARY_PROFILE` | Full notarisation + stapled ticket. Gatekeeper-clean for everyone. |
 

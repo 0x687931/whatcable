@@ -9,6 +9,7 @@ import os.log
 final class Installer: ObservableObject {
     static let shared = Installer()
     private nonisolated static let log = Logger(subsystem: "com.bitmoor.whatcable", category: "installer")
+    private nonisolated static let expectedAppName = "WhatCable.app"
     typealias CommandRunner = (_ launchPath: String, _ arguments: [String]) throws -> String
 
     enum State: Equatable {
@@ -96,13 +97,25 @@ final class Installer: ObservableObject {
         guard apps.count == 1, let app = apps.first else {
             throw InstallError("Expected exactly one .app inside the downloaded zip")
         }
+        guard app.lastPathComponent == Self.expectedAppName else {
+            throw InstallError("Expected \(Self.expectedAppName) inside the downloaded zip")
+        }
         return app
     }
 
     func validateExtractedUpdate(candidateApp: URL, currentApp: URL) throws {
-        try verifyUpdateIdentity(candidateApp: candidateApp, currentApp: currentApp)
-        try assessWithGatekeeper(candidateApp)
+        try verifyExpectedAppName(candidateApp)
+        let validation = try verifyUpdateIdentity(candidateApp: candidateApp, currentApp: currentApp)
+        if validation.requiresGatekeeperAssessment {
+            try assessWithGatekeeper(candidateApp)
+        }
         try stripQuarantine(at: candidateApp)
+    }
+
+    private func verifyExpectedAppName(_ app: URL) throws {
+        guard app.lastPathComponent == Self.expectedAppName else {
+            throw InstallError("Expected update app named \(Self.expectedAppName)")
+        }
     }
 
     private func assessWithGatekeeper(_ app: URL) throws {
@@ -115,7 +128,11 @@ final class Installer: ObservableObject {
         _ = try? run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", url.path])
     }
 
-    private func verifyUpdateIdentity(candidateApp: URL, currentApp: URL) throws {
+    private struct ValidationPolicy {
+        let requiresGatekeeperAssessment: Bool
+    }
+
+    private func verifyUpdateIdentity(candidateApp: URL, currentApp: URL) throws -> ValidationPolicy {
         try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", candidateApp.path])
 
         let candidateBundle = try bundleIdentity(of: candidateApp)
@@ -126,8 +143,19 @@ final class Installer: ObservableObject {
 
         let candidateSignature = try signatureIdentity(of: candidateApp)
         let currentSignature = try signatureIdentity(of: currentApp)
-        guard candidateSignature == currentSignature else {
-            throw InstallError("Signature identity mismatch: refusing to install")
+        if currentSignature.isAdHoc || candidateSignature.isAdHoc {
+            guard currentSignature.isAdHoc && candidateSignature.isAdHoc else {
+                throw InstallError("Signature type mismatch: refusing to install")
+            }
+            guard candidateSignature.identifier == currentSignature.identifier else {
+                throw InstallError("Signature identifier mismatch: refusing to install")
+            }
+            return ValidationPolicy(requiresGatekeeperAssessment: false)
+        } else {
+            guard candidateSignature == currentSignature else {
+                throw InstallError("Signature identity mismatch: refusing to install")
+            }
+            return ValidationPolicy(requiresGatekeeperAssessment: true)
         }
     }
 
@@ -164,8 +192,9 @@ final class Installer: ObservableObject {
 
     private struct SignatureIdentity: Equatable {
         let identifier: String
-        let teamIdentifier: String
+        let teamIdentifier: String?
         let designatedRequirement: String
+        let isAdHoc: Bool
     }
 
     private func signatureIdentity(of app: URL) throws -> SignatureIdentity {
@@ -173,26 +202,31 @@ final class Installer: ObservableObject {
         var identifier: String?
         var teamIdentifier: String?
         var requirement: String?
+        var isAdHoc = false
 
         for rawLine in output.split(separator: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
             if line.hasPrefix("Identifier=") {
                 identifier = String(line.dropFirst("Identifier=".count))
             } else if line.hasPrefix("TeamIdentifier=") {
-                teamIdentifier = String(line.dropFirst("TeamIdentifier=".count))
+                let value = String(line.dropFirst("TeamIdentifier=".count))
+                teamIdentifier = value == "not set" ? nil : value
+            } else if line == "Signature=adhoc" {
+                isAdHoc = true
             } else if line.hasPrefix("designated =>") {
                 requirement = String(line.dropFirst("designated =>".count))
                     .trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
 
-        guard let identifier, let teamIdentifier, let requirement else {
+        guard let identifier, let requirement else {
             throw InstallError("Could not read signature identity from \(app.lastPathComponent)")
         }
         return SignatureIdentity(
             identifier: identifier,
             teamIdentifier: teamIdentifier,
-            designatedRequirement: requirement
+            designatedRequirement: requirement,
+            isAdHoc: isAdHoc
         )
     }
 
@@ -203,16 +237,24 @@ final class Installer: ObservableObject {
         PID=\(ProcessInfo.processInfo.processIdentifier)
         NEW=\(shellQuote(newApp.path))
         OLD=\(shellQuote(currentApp.path))
+        BACKUP="${OLD}.previous-update"
 
-        # Wait up to 30s for the running app to exit
+        # Wait up to 30s for the running app to exit.
         for _ in $(seq 1 60); do
             if ! kill -0 "$PID" 2>/dev/null; then break; fi
             sleep 0.5
         done
 
-        rm -rf "$OLD"
-        mv "$NEW" "$OLD"
-        open "$OLD"
+        rm -rf "$BACKUP"
+        mv "$OLD" "$BACKUP"
+        if mv "$NEW" "$OLD"; then
+            rm -rf "$BACKUP"
+            open "$OLD"
+        else
+            mv "$BACKUP" "$OLD"
+            open "$OLD"
+            exit 1
+        fi
         """
 
         let scriptURL = FileManager.default.temporaryDirectory

@@ -16,6 +16,7 @@ struct WhatCableApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static let refreshSignal = RefreshSignal()
     private static let panelWidth: CGFloat = 320
+    private static let minimumPanelWidth: CGFloat = 172
     private static let fallbackPanelHeight: CGFloat = 420
     private static let screenPadding: CGFloat = 8
     private let cableStore = CableStateStore.shared
@@ -204,8 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentViewController = controller
 
         // Track SwiftUI's preferred content size so the panel grows/shrinks as
-        // the user reveals technical details or expands a port detail
-        // accordion — keeping the top edge anchored to the menu bar.
+        // content changes while keeping the top edge anchored to the menu bar.
         contentSizeObservation = controller.observe(
             \.preferredContentSize, options: [.new]
         ) { [weak self] _, change in
@@ -237,7 +237,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let width = preferred.width > 0 ? preferred.width : Self.panelWidth
         let height = preferred.height > 0 ? preferred.height : Self.fallbackPanelHeight
         return NSSize(
-            width: max(Self.panelWidth, width),
+            width: max(Self.minimumPanelWidth, width),
             height: min(height, maxHeight)
         )
     }
@@ -253,10 +253,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleClick(_ sender: NSStatusBarButton) {
         guard let event = NSApp.currentEvent else { return }
-        if event.type == .rightMouseUp {
+        if event.type == .rightMouseUp || event.modifierFlags.contains(.option) {
             showMenu(from: sender)
         } else {
-            Self.refreshSignal.optionHeld = event.modifierFlags.contains(.option)
             togglePanel(from: sender)
         }
     }
@@ -303,7 +302,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func hideMenuPanel() {
         menuPanel?.orderOut(nil)
         statusItem?.button?.highlight(false)
-        Self.refreshSignal.optionHeld = false
         removeEventMonitors()
     }
 
@@ -399,8 +397,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 final class RefreshSignal: ObservableObject {
     @Published var tick: Int = 0
-    /// Set for the lifetime of an option-click-opened panel to reveal details without changing settings.
-    @Published var optionHeld = false
 
     func bump() { tick &+= 1 }
 }

@@ -23,10 +23,15 @@ final class UpdateCheckerTests: XCTestCase {
     }
 
     func testDevFallback() {
-        // "dev" (the swift-run fallback) should be considered older than any
-        // real version, so a dev build always sees an "update available" —
-        // matches the actual behavior of AppInfo.version under `swift run`.
+        // Legacy/non-numeric versions should be considered older than any
+        // real version.
         XCTAssertTrue(UpdateChecker.isNewer(remote: "0.3.0", current: "dev"))
+    }
+
+    func testAppInfoVersionFallsBackToBuildScriptVersion() throws {
+        let scriptVersion = try buildScriptVersion()
+        XCTAssertEqual(AppInfo.version, scriptVersion)
+        XCTAssertNotEqual(AppInfo.version, "dev")
     }
 
     func testTrustedReleaseURLs() {
@@ -41,5 +46,41 @@ final class UpdateCheckerTests: XCTestCase {
         XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://github.com/0x687931/whatcable/releases/download/v0.4.3/Other.zip")!))
         XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://github.com/darrylmorley/whatcable/releases/download/v0.4.3/WhatCable.zip")!))
         XCTAssertFalse(UpdateChecker.isTrustedDownloadURL(URL(string: "https://example.com/0x687931/whatcable/releases/download/v0.4.3/WhatCable.zip")!))
+    }
+
+    func testNoReleaseResponseMessage() {
+        let data = #"{"message":"Not Found","status":"404"}"#.data(using: .utf8)
+        XCTAssertEqual(
+            UpdateChecker.message(forHTTPStatus: 404, data: data),
+            "No public releases have been published for 0x687931/whatcable yet."
+        )
+    }
+
+    func testHTTPErrorResponseIncludesGitHubMessage() {
+        let data = #"{"message":"API rate limit exceeded"}"#.data(using: .utf8)
+        XCTAssertEqual(
+            UpdateChecker.message(forHTTPStatus: 403, data: data),
+            "GitHub returned HTTP 403: API rate limit exceeded"
+        )
+    }
+
+    private func buildScriptVersion() throws -> String {
+        let testFile = URL(fileURLWithPath: #filePath)
+        let repoRoot = testFile
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let script = repoRoot.appendingPathComponent("scripts/build-app.sh")
+        let contents = try String(contentsOf: script, encoding: .utf8)
+        for line in contents.split(whereSeparator: \.isNewline) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("VERSION=") {
+                return trimmed
+                    .dropFirst("VERSION=".count)
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            }
+        }
+        XCTFail("VERSION not found in scripts/build-app.sh")
+        return ""
     }
 }

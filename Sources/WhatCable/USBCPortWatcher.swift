@@ -152,9 +152,9 @@ final class USBCPortWatcher: ObservableObject {
         // Type-C or MagSafe port. Real ports have a "PortTypeDescription"
         // and a name like "Port-USB-C@N" / "Port-MagSafe 3@N".
         let portType = dict["PortTypeDescription"] as? String
-        let isRealPort = (portType == "USB-C" || portType?.hasPrefix("MagSafe") == true)
-            && serviceName.hasPrefix("Port-")
-        guard isRealPort else { return nil }
+        guard Self.isPhysicalPort(serviceName: serviceName, portTypeDescription: portType) else {
+            return nil
+        }
 
         let raw = IOKitSupport.stringProperties(from: dict)
 
@@ -221,33 +221,58 @@ final class USBCPortWatcher: ObservableObject {
         return baseName
     }
 
-    /// Walks the IOKit parent chain looking for an `hpm<N>@...` SPMI node and
-    /// returns N. On some Apple-silicon machines this can be matched against a
-    /// USB controller bus index, but direct `UsbIOPort` paths are preferred.
+    /// Walks the IOKit parent chain looking for a controller-index node. M3-era
+    /// Macs commonly expose `hpm<N>`, while M1/M2 machines can expose `atc<N>`
+    /// or `usb-drd<N>`. Direct `UsbIOPort` paths are still preferred.
     private func busIndex(for service: io_service_t) -> Int? {
         var current = service
         IOObjectRetain(current)
         defer { IOObjectRelease(current) }
 
         for _ in 0..<8 {
+            var nameBuf = [CChar](repeating: 0, count: 128)
+            IORegistryEntryGetName(current, &nameBuf)
+            if let n = Self.busIndex(fromRegistryName: String(cString: nameBuf)) {
+                return n
+            }
+
             var parent: io_service_t = 0
             guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
-                return nil
+                break
             }
             IOObjectRelease(current)
             current = parent
+        }
 
-            var nameBuf = [CChar](repeating: 0, count: 128)
-            IORegistryEntryGetName(current, &nameBuf)
-            let name = String(cString: nameBuf)
-            if name.hasPrefix("hpm"), let at = name.firstIndex(of: "@") {
-                let digits = name[name.index(name.startIndex, offsetBy: 3)..<at]
-                if let n = Int(digits) {
-                    return n
-                }
+        var locBuf = [CChar](repeating: 0, count: 128)
+        if IORegistryEntryGetLocationInPlane(service, kIOServicePlane, &locBuf) == KERN_SUCCESS {
+            if let n = Self.busIndex(fromLocation: String(cString: locBuf)) {
+                return n
+            }
+        }
+
+        return nil
+    }
+
+    nonisolated static func isPhysicalPort(serviceName: String, portTypeDescription: String?) -> Bool {
+        (portTypeDescription == "USB-C" || portTypeDescription?.hasPrefix("MagSafe") == true)
+            && serviceName.hasPrefix("Port-")
+    }
+
+    nonisolated static func busIndex(fromRegistryName name: String) -> Int? {
+        for prefix in ["hpm", "atc", "usb-drd"] where name.hasPrefix(prefix) {
+            let suffix = name.dropFirst(prefix.count)
+            let digits = suffix.prefix { $0.isNumber }
+            if !digits.isEmpty, let n = Int(digits) {
+                return n
             }
         }
         return nil
+    }
+
+    nonisolated static func busIndex(fromLocation location: String) -> Int? {
+        guard !location.isEmpty else { return nil }
+        return Int(location, radix: 16)
     }
 
     private func stringArray(_ value: Any?) -> [String] {

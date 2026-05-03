@@ -81,22 +81,14 @@ final class PDIdentityWatcher: ObservableObject {
         let entryID = IOKitSupport.entryID(for: service)
         guard let dict = IOKitSupport.properties(for: service) else { return nil }
 
-        let endpointName = (dict["ComponentName"] as? String)
-            ?? (dict["AddressDescription"] as? String)
-            ?? (dict["Address Description"] as? String)
-            ?? "Unknown"
-        let endpoint = PDIdentity.Endpoint(rawValue: endpointName) ?? .unknown
-
-        let parentType = (dict["ParentPortType"] as? NSNumber)?.intValue ?? 0
-        let parentNum = (dict["ParentPortNumber"] as? NSNumber)?.intValue ?? 0
+        let endpoint = Self.endpoint(from: dict)
+        let parent = Self.parentPortIdentity(from: dict)
         let specRev = (dict["Specification Revision"] as? NSNumber)?.intValue ?? 0
 
-        let metadata = dict["Metadata"] as? [String: Any] ?? [:]
-        let vendorID = (metadata["Vendor ID"] as? NSNumber)?.intValue
-            ?? (dict["Vendor ID"] as? NSNumber)?.intValue ?? 0
-        let productID = (metadata["Product ID"] as? NSNumber)?.intValue
-            ?? (dict["Product ID"] as? NSNumber)?.intValue ?? 0
-        let bcdDevice = (metadata["bcdDevice"] as? NSNumber)?.intValue ?? 0
+        let metadata = Self.metadataDictionary(from: dict)
+        let vendorID = Self.vendorID(from: dict, metadata: metadata)
+        let productID = Self.productID(from: dict, metadata: metadata)
+        let bcdDevice = Self.bcdDevice(from: metadata)
 
         let vdos: [UInt32] = ((metadata["VDOs"] as? [Any]) ?? []).compactMap { value in
             guard let data = value as? Data else { return nil }
@@ -106,14 +98,74 @@ final class PDIdentityWatcher: ObservableObject {
         return PDIdentity(
             id: entryID,
             endpoint: endpoint,
-            parentPortType: parentType,
-            parentPortNumber: parentNum,
+            parentPortType: parent.type,
+            parentPortNumber: parent.number,
             vendorID: vendorID,
             productID: productID,
             bcdDevice: bcdDevice,
             vdos: vdos,
             specRevision: specRev
         )
+    }
+
+    nonisolated static func endpointName(from dict: [String: Any]) -> String {
+        (dict["ComponentName"] as? String)
+            ?? (dict["AddressDescription"] as? String)
+            ?? (dict["Address Description"] as? String)
+            ?? (dict["TransportTypeDescription"] as? String)
+            ?? "Unknown"
+    }
+
+    nonisolated static func endpoint(from dict: [String: Any]) -> PDIdentity.Endpoint {
+        let name = endpointName(from: dict)
+        if name == "CC" {
+            return .sopPrime
+        }
+        return PDIdentity.Endpoint(rawValue: name) ?? .unknown
+    }
+
+    nonisolated static func parentPortIdentity(from dict: [String: Any]) -> (type: Int, number: Int) {
+        let type = (dict["ParentPortType"] as? NSNumber)?.intValue
+            ?? (dict["ParentBuiltInPortType"] as? NSNumber)?.intValue
+            ?? 0
+        let number = (dict["ParentPortNumber"] as? NSNumber)?.intValue
+            ?? (dict["ParentBuiltInPortNumber"] as? NSNumber)?.intValue
+            ?? 0
+        return (type, number)
+    }
+
+    nonisolated static func metadataDictionary(from dict: [String: Any]) -> [String: Any] {
+        if let metadata = dict["Metadata"] as? [String: Any] {
+            return metadata
+        }
+        if let nsMetadata = dict["Metadata"] as? NSDictionary {
+            var converted: [String: Any] = [:]
+            for case let (key, value) as (String, Any) in nsMetadata {
+                converted[key] = value
+            }
+            return converted
+        }
+        return [:]
+    }
+
+    nonisolated static func vendorID(from dict: [String: Any], metadata: [String: Any]) -> Int {
+        (metadata["Vendor ID"] as? NSNumber)?.intValue
+            ?? (metadata["Vendor ID (SOP1)"] as? NSNumber)?.intValue
+            ?? (dict["Vendor ID (SOP1)"] as? NSNumber)?.intValue
+            ?? (dict["Vendor ID"] as? NSNumber)?.intValue
+            ?? 0
+    }
+
+    nonisolated static func productID(from dict: [String: Any], metadata: [String: Any]) -> Int {
+        (metadata["Product ID"] as? NSNumber)?.intValue
+            ?? (metadata["Product ID (SOP1)"] as? NSNumber)?.intValue
+            ?? (dict["Product ID (SOP1)"] as? NSNumber)?.intValue
+            ?? (dict["Product ID"] as? NSNumber)?.intValue
+            ?? 0
+    }
+
+    nonisolated static func bcdDevice(from metadata: [String: Any]) -> Int {
+        (metadata["bcdDevice"] as? NSNumber)?.intValue ?? 0
     }
 
 }

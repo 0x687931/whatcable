@@ -135,7 +135,7 @@ final class USBWatcher: ObservableObject {
         var busIndex: Int?
         var controllerPortName: String?
 
-        for _ in 0..<16 {
+        for _ in 0..<20 {
             var parent: io_service_t = 0
             guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
                 break
@@ -149,8 +149,9 @@ final class USBWatcher: ObservableObject {
                     "UsbIOPort" as CFString,
                     kCFAllocatorDefault,
                     0
-               )?.takeRetainedValue() as? String,
-               let portName = Self.portName(fromUSBIOPortPath: rawPort) {
+               )?.takeRetainedValue(),
+               let portPath = Self.usbIOPortPath(from: rawPort),
+               let portName = Self.portName(fromUSBIOPortPath: portPath) {
                 controllerPortName = portName
             }
 
@@ -164,19 +165,34 @@ final class USBWatcher: ObservableObject {
                     kCFAllocatorDefault,
                     0
                 )?.takeRetainedValue() as? NSNumber {
-                    busIndex = Int((loc.uint32Value >> 24) & 0xFF)
+                    busIndex = Self.busIndex(fromLocationID: loc.uint32Value)
                 }
                 break
             }
         }
 
         if busIndex == nil {
-            busIndex = Int((locationID >> 24) & 0xFF)
+            busIndex = Self.busIndex(fromLocationID: locationID)
         }
         return (busIndex, controllerPortName)
     }
 
-    private static func portName(fromUSBIOPortPath path: String) -> String? {
+    nonisolated static func busIndex(fromLocationID locationID: UInt32) -> Int {
+        Int((locationID >> 24) & 0xFF)
+    }
+
+    nonisolated static func usbIOPortPath(from value: Any) -> String? {
+        if let string = value as? String {
+            return string
+        }
+        if let data = value as? Data {
+            return String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .controlCharacters)
+        }
+        return nil
+    }
+
+    nonisolated static func portName(fromUSBIOPortPath path: String) -> String? {
         guard let last = path.split(separator: "/").last else { return nil }
         let name = String(last)
         return name.hasPrefix("Port-") ? name : nil

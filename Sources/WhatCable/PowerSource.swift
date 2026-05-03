@@ -38,3 +38,10 @@ struct PowerSource: Identifiable, Hashable {
     /// Match key joining a power source to its port.
     var portKey: String { "\(parentPortType)/\(parentPortNumber)" }
 }
+
+extension PowerSource {
+    static func preferredChargingSource(in sources: [PowerSource]) -> PowerSource? {
+        sources.first { $0.name == "USB-PD" }
+            ?? sources.first { $0.name == "Brick ID" }
+    }
+}

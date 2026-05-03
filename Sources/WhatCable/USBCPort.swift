@@ -89,33 +89,92 @@ struct USBCPort: Identifiable, Hashable {
     /// Match key joining port-controller, power-source, and PD identity views.
     var portKey: String? {
         guard let n = portNumber else { return nil }
-        let rawType = rawProperties["PortType"].flatMap { Int($0) } ?? 0x2
+        let rawType: Int
+        if portTypeDescription?.hasPrefix("MagSafe") == true {
+            rawType = 0x11
+        } else {
+            rawType = rawProperties["PortType"].flatMap { Int($0) } ?? 0x2
+        }
         return "\(rawType)/\(n)"
     }
 
     func matchingDevices(from devices: [USBDevice]) -> [USBDevice] {
-        let portNames = Set<String>([serviceName, portDescription].compactMap { value in
-            guard let value else { return nil }
-            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? nil : trimmed
-        })
+        guard connectionActive == true else { return [] }
+
+        let portNames = [serviceName, portDescription].compactMap(Self.cleanPortName)
 
         if !portNames.isEmpty {
             let directMatches = devices.filter { device in
                 guard let name = device.controllerPortName else { return false }
-                return portNames.contains(name)
+                return portNames.contains { portName in
+                    Self.portNameMatches(
+                        portName,
+                        deviceName: name,
+                        portBusIndex: busIndex,
+                        deviceBusIndex: device.busIndex
+                    )
+                }
             }
             if !directMatches.isEmpty {
                 return directMatches
             }
         }
 
-        if devices.contains(where: { $0.controllerPortName != nil }) {
-            return []
+        guard carriesUSB, let busIndex else { return [] }
+        return devices.filter { device in
+            device.controllerPortName == nil && device.busIndex == busIndex
         }
+    }
 
-        guard let busIndex else { return [] }
-        return devices.filter { $0.busIndex == busIndex }
+    private var carriesUSB: Bool {
+        if usbActive == true || superSpeedActive == true {
+            return true
+        }
+        return transportsActive.contains { transport in
+            transport == "USB2" || transport == "USB3" || transport == "USB4" || transport == "CIO"
+        }
+    }
+
+    private static func portNameMatches(
+        _ portName: String,
+        deviceName: String,
+        portBusIndex: Int?,
+        deviceBusIndex: Int?
+    ) -> Bool {
+        guard let portName = cleanPortName(portName),
+              let deviceName = cleanPortName(deviceName) else {
+            return false
+        }
+        if portName == deviceName {
+            return true
+        }
+        guard busIndexesAreCompatible(portBusIndex, deviceBusIndex) else {
+            return false
+        }
+        if basePortName(portName) == deviceName {
+            return true
+        }
+        if basePortName(deviceName) == portName {
+            return true
+        }
+        return false
+    }
+
+    private static func cleanPortName(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func basePortName(_ value: String) -> String? {
+        guard let at = value.firstIndex(of: "@") else { return nil }
+        let base = String(value[..<at])
+        return base.hasPrefix("Port-") ? base : nil
+    }
+
+    private static func busIndexesAreCompatible(_ lhs: Int?, _ rhs: Int?) -> Bool {
+        guard let lhs, let rhs else { return true }
+        return lhs == rhs
     }
 
     static func isIntelThunderboltFallbackClass(_ className: String) -> Bool {

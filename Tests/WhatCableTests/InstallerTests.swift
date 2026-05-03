@@ -13,7 +13,7 @@ final class InstallerTests: XCTestCase {
     @MainActor
     func testValidationAssessesGatekeeperBeforeQuarantineStripping() throws {
         let root = try makeTemporaryDirectory()
-        let candidateApp = try makeFakeApp(named: "Candidate.app", in: root)
+        let candidateApp = try makeFakeApp(named: "WhatCable.app", in: root)
         let currentApp = try makeFakeApp(named: "Current.app", in: root)
         var calls: [CommandInvocation] = []
 
@@ -51,7 +51,7 @@ final class InstallerTests: XCTestCase {
     @MainActor
     func testValidationDoesNotStripQuarantineWhenGatekeeperFails() throws {
         let root = try makeTemporaryDirectory()
-        let candidateApp = try makeFakeApp(named: "Candidate.app", in: root)
+        let candidateApp = try makeFakeApp(named: "WhatCable.app", in: root)
         let currentApp = try makeFakeApp(named: "Current.app", in: root)
         var calls: [CommandInvocation] = []
 
@@ -67,6 +67,71 @@ final class InstallerTests: XCTestCase {
             try installer.validateExtractedUpdate(candidateApp: candidateApp, currentApp: currentApp)
         )
         XCTAssertFalse(calls.contains { $0.launchPath == "/usr/bin/xattr" })
+    }
+
+    @MainActor
+    func testValidationRejectsUnexpectedAppNameBeforeRunningTools() throws {
+        let root = try makeTemporaryDirectory()
+        let candidateApp = try makeFakeApp(named: "Other.app", in: root)
+        let currentApp = try makeFakeApp(named: "Current.app", in: root)
+        var calls: [CommandInvocation] = []
+
+        let installer = Installer { launchPath, arguments in
+            calls.append(CommandInvocation(launchPath: launchPath, arguments: arguments))
+            return self.output(for: launchPath, arguments: arguments)
+        }
+
+        XCTAssertThrowsError(
+            try installer.validateExtractedUpdate(candidateApp: candidateApp, currentApp: currentApp)
+        )
+        XCTAssertTrue(calls.isEmpty)
+    }
+
+    @MainActor
+    func testAdHocValidationSkipsGatekeeperButStillStripsQuarantine() throws {
+        let root = try makeTemporaryDirectory()
+        let candidateApp = try makeFakeApp(named: "WhatCable.app", in: root)
+        let currentApp = try makeFakeApp(named: "Current.app", in: root)
+        var calls: [CommandInvocation] = []
+
+        let installer = Installer { launchPath, arguments in
+            calls.append(CommandInvocation(launchPath: launchPath, arguments: arguments))
+            return self.output(for: launchPath, arguments: arguments, adHoc: true)
+        }
+
+        try installer.validateExtractedUpdate(candidateApp: candidateApp, currentApp: currentApp)
+
+        XCTAssertFalse(calls.contains { $0.launchPath == "/usr/sbin/spctl" })
+        XCTAssertTrue(
+            calls.contains(
+                CommandInvocation(
+                    launchPath: "/usr/bin/xattr",
+                    arguments: ["-dr", "com.apple.quarantine", candidateApp.path]
+                )
+            )
+        )
+    }
+
+    @MainActor
+    func testValidationRejectsMixedSignedAndAdHocUpdates() throws {
+        let root = try makeTemporaryDirectory()
+        let candidateApp = try makeFakeApp(named: "WhatCable.app", in: root)
+        let currentApp = try makeFakeApp(named: "Current.app", in: root)
+
+        let installer = Installer { launchPath, arguments in
+            if launchPath == "/usr/bin/codesign", arguments.first == "-dvv" {
+                return self.output(
+                    for: launchPath,
+                    arguments: arguments,
+                    adHoc: arguments.contains(candidateApp.path)
+                )
+            }
+            return self.output(for: launchPath, arguments: arguments)
+        }
+
+        XCTAssertThrowsError(
+            try installer.validateExtractedUpdate(candidateApp: candidateApp, currentApp: currentApp)
+        )
     }
 
     private struct CommandInvocation: Equatable {
@@ -106,7 +171,21 @@ final class InstallerTests: XCTestCase {
     }
 
     private func output(for launchPath: String, arguments: [String]) -> String {
+        output(for: launchPath, arguments: arguments, adHoc: false)
+    }
+
+    private func output(for launchPath: String, arguments: [String], adHoc: Bool) -> String {
         if launchPath == "/usr/bin/codesign", arguments.first == "-dvv" {
+            if adHoc {
+                return """
+                Executable=/tmp/WhatCable.app/Contents/MacOS/WhatCable
+                Identifier=com.bitmoor.whatcable
+                Format=app bundle with Mach-O universal (x86_64 arm64)
+                Signature=adhoc
+                TeamIdentifier=not set
+                designated => cdhash H"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                """
+            }
             return """
             Executable=/tmp/WhatCable.app/Contents/MacOS/WhatCable
             Identifier=com.bitmoor.whatcable

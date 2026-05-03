@@ -1,14 +1,33 @@
 import SwiftUI
 
 struct ContentView: View {
+    private enum Layout {
+        static let standardPopoverWidth: CGFloat = 320
+        // 320 px popover - 16 px side padding - 8 px grid gap gives 140 px
+        // tiles in the two-column grid. A one-tile popover keeps that tile
+        // size and only removes the unused second column.
+        static let singleTilePopoverWidth: CGFloat = 172
+    }
+
     @ObservedObject private var cableStore = CableStateStore.shared
     @EnvironmentObject private var refresh: RefreshSignal
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var updates = UpdateChecker.shared
     @State private var showSettings = false
 
-    private var showAdvanced: Bool {
-        refresh.optionHeld
+    private var visiblePorts: [USBCPort] {
+        settings.hideEmptyPorts
+            ? cableStore.ports.filter { $0.connectionActive == true }
+            : cableStore.ports
+    }
+
+    private var preferredPopoverWidth: CGFloat {
+        if showSettings || updates.available != nil {
+            return Layout.standardPopoverWidth
+        }
+        return visiblePorts.count == 1
+            ? Layout.singleTilePopoverWidth
+            : Layout.standardPopoverWidth
     }
 
     private var idlePortsCopy: String {
@@ -25,7 +44,7 @@ struct ContentView: View {
                 mainContent
             }
         }
-        .frame(width: 320)
+        .frame(width: preferredPopoverWidth)
         .fixedSize(horizontal: false, vertical: true)
         .modifier(LiquidGlassBackground())
         .onAppear {
@@ -44,9 +63,6 @@ struct ContentView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
             }
-            let visiblePorts = settings.hideEmptyPorts
-                ? cableStore.ports.filter { $0.connectionActive == true }
-                : cableStore.ports
             if visiblePorts.isEmpty {
                 if cableStore.ports.isEmpty {
                     noPortsState
@@ -90,24 +106,11 @@ struct ContentView: View {
                         }
 
                         LazyVGrid(
-                            columns: [
-                                GridItem(.flexible(), spacing: 8),
-                                GridItem(.flexible(), spacing: 8)
-                            ],
+                            columns: portGridColumns(for: visiblePorts.count),
                             spacing: 8
                         ) {
                             ForEach(visiblePorts) { port in
                                 PortCard(
-                                    port: port,
-                                    powerSources: cableStore.sources(for: port),
-                                    identities: cableStore.identities(for: port)
-                                )
-                            }
-                        }
-
-                        if showAdvanced {
-                            ForEach(visiblePorts) { port in
-                                PortDetailsSection(
                                     port: port,
                                     powerSources: cableStore.sources(for: port),
                                     identities: cableStore.identities(for: port)
@@ -121,6 +124,14 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private func portGridColumns(for portCount: Int) -> [GridItem] {
+        let columnCount = portCount == 1 ? 1 : 2
+        return Array(
+            repeating: GridItem(.flexible(), spacing: 8),
+            count: columnCount
+        )
     }
 
     private var header: some View {

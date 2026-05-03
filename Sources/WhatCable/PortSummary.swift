@@ -98,14 +98,14 @@ extension PortSummary {
         }
 
         // Power summary from PD power sources
-        let usbPD = sources.first(where: { $0.name == "USB-PD" })
-        if let usbPD {
-            let maxW = Int((Double(usbPD.maxPowerMW) / 1000).rounded())
-            let hasOptions = !usbPD.options.isEmpty
+        let chargingSource = PowerSource.preferredChargingSource(in: sources)
+        if let chargingSource {
+            let maxW = Int((Double(chargingSource.maxPowerMW) / 1000).rounded())
+            let hasOptions = !chargingSource.options.isEmpty
             if hasOptions && maxW > 0 {
                 bullets.append("Charger advertises up to \(maxW)W")
             }
-            if let win = usbPD.winning {
+            if let win = chargingSource.winning {
                 bullets.append("Currently negotiated: \(win.voltsLabel) @ \(win.ampsLabel) (\(win.wattsLabel))")
             }
         }
@@ -138,8 +138,8 @@ extension PortSummary {
         // Only show a wattage suffix if we have a real number (>0 and we have
         // options, not just the winning PDO).
         let chargerW: Int? = {
-            guard let usbPD, !usbPD.options.isEmpty else { return nil }
-            let w = Int((Double(usbPD.maxPowerMW) / 1000).rounded())
+            guard let chargingSource, !chargingSource.options.isEmpty else { return nil }
+            let w = Int((Double(chargingSource.maxPowerMW) / 1000).rounded())
             return w > 0 ? w : nil
         }()
         let chargerSuffix = chargerW.map { " · \($0)W charger" } ?? ""
@@ -163,7 +163,7 @@ extension PortSummary {
             self.status = .dataDevice
             self.headline = "Slow USB device or charge-only cable" + chargerSuffix
             self.subtitle = "Only USB 2.0 is active. If you expected high speed, the cable may not support it."
-        } else if usbPD != nil {
+        } else if chargingSource != nil {
             self.status = .charging
             self.headline = "Power connected" + chargerSuffix
             self.subtitle = "Power is available. No data connection."
