@@ -12,7 +12,7 @@ public final class USBCPortWatcher: ObservableObject {
     // ports — those have no physical connector and just confuse the UI.
     // The exact IOKit class for a USB-C port node varies by chip
     // generation. M3-era machines expose `AppleHPMInterfaceType10/11/12`;
-    // M1 and M2 expose `AppleTCControllerType10`. We register against
+    // M1 and M2 expose `AppleTCControllerType10/11`. We register against
     // both. The `PortTypeDescription` / `Port-` filter in `makePort`
     // drops anything that isn't a real physical port.
     private static let candidateClasses = [
@@ -133,36 +133,51 @@ public final class USBCPortWatcher: ObservableObject {
         )
     }
 
-    /// Walks the IOKit parent chain looking for an `hpm<N>@…` SPMI node and
-    /// returns N. On M3+ machines this N matches the upper byte of the
-    /// associated XHCI controller's `locationID`, giving a bus index that
-    /// can be matched against `USBDevice.busIndex`. Returns `nil` on
-    /// machines that don't expose the hpm hierarchy (M1/M2, where ports
-    /// register directly under `AppleTCControllerType10/11`).
+    /// Walks the IOKit parent chain looking for a controller-index node. M3-era
+    /// Macs commonly expose `hpm<N>`, while M1/M2 machines can expose `atc<N>`
+    /// or `usb-drd<N>`. Direct `UsbIOPort` paths are still preferred.
     private func busIndex(for service: io_service_t) -> Int? {
         var current = service
         IOObjectRetain(current)
         defer { IOObjectRelease(current) }
 
         for _ in 0..<8 {
+            var nameBuf = [CChar](repeating: 0, count: 128)
+            IORegistryEntryGetName(current, &nameBuf)
+            if let n = Self.busIndex(fromRegistryName: String(cString: nameBuf)) {
+                return n
+            }
+
             var parent: io_service_t = 0
             guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
-                return nil
+                break
             }
             IOObjectRelease(current)
             current = parent
+        }
 
-            var nameBuf = [CChar](repeating: 0, count: 128)
-            IORegistryEntryGetName(current, &nameBuf)
-            let name = String(cString: nameBuf)
-            if name.hasPrefix("hpm"), let at = name.firstIndex(of: "@") {
-                let digits = name[name.index(name.startIndex, offsetBy: 3)..<at]
-                if let n = Int(digits) {
-                    return n
-                }
+        var locBuf = [CChar](repeating: 0, count: 128)
+        if IORegistryEntryGetLocationInPlane(service, kIOServicePlane, &locBuf) == KERN_SUCCESS,
+           let n = Self.busIndex(fromLocation: String(cString: locBuf)) {
+            return n
+        }
+
+        return nil
+    }
+
+    nonisolated static func busIndex(fromRegistryName name: String) -> Int? {
+        for prefix in ["hpm", "atc", "usb-drd"] where name.hasPrefix(prefix) {
+            let suffix = name.dropFirst(prefix.count)
+            let digits = suffix.prefix { $0.isNumber }
+            if !digits.isEmpty, let n = Int(digits) {
+                return n
             }
         }
         return nil
     }
 
+    nonisolated static func busIndex(fromLocation location: String) -> Int? {
+        guard !location.isEmpty else { return nil }
+        return Int(location, radix: 16)
+    }
 }

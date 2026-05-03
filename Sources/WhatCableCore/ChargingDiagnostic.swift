@@ -26,9 +26,14 @@ public struct ChargingDiagnostic {
 }
 
 extension ChargingDiagnostic {
-    public init?(port: USBCPort, sources: [PowerSource], identities: [PDIdentity]) {
-        guard let usbPD = sources.first(where: { $0.name == "USB-PD" }) else {
-            return nil // No PD source on this port, no diagnostic to make.
+    public init?(
+        port: USBCPort,
+        sources: [PowerSource],
+        identities: [PDIdentity],
+        systemAdapter: SystemPower.AdapterInfo? = SystemPower.currentAdapter()
+    ) {
+        guard let source = PowerSource.preferredChargingSource(in: sources) else {
+            return nil // No USB-PD or MagSafe Brick ID source on this port.
         }
         // MagSafe (and at least some USB-C ports) keep the last negotiated
         // PDO around as cached data even after the charger is unplugged, so
@@ -37,8 +42,17 @@ extension ChargingDiagnostic {
         // the PowerSource node alone.
         guard port.connectionActive == true else { return nil }
 
-        let chargerMaxW = Int((Double(usbPD.maxPowerMW) / 1000).rounded())
-        let negotiatedW = usbPD.winning.map { Int((Double($0.maxPowerMW) / 1000).rounded()) }
+        var chargerMaxW = Int((Double(source.maxPowerMW) / 1000).rounded())
+        var negotiatedW = source.winning.map { Int((Double($0.maxPowerMW) / 1000).rounded()) }
+
+        if negotiatedW.map({ $0 <= 0 }) ?? true,
+           let watts = systemAdapter?.watts,
+           watts > 0 {
+            negotiatedW = watts
+            if chargerMaxW <= 0 {
+                chargerMaxW = watts
+            }
+        }
 
         let cableMaxW: Int? = identities
             .first(where: { $0.endpoint == .sopPrime || $0.endpoint == .sopDoublePrime })?

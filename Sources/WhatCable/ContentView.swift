@@ -175,29 +175,7 @@ struct ContentView: View {
     /// is worse than showing none, and it caused the bug that issue #21
     /// reported.
     private func matchingDevices(for port: USBCPort) -> [USBDevice] {
-        guard port.connectionActive == true else { return [] }
-        guard portCarriesUSB(port) else { return [] }
-        let byPortName = deviceWatcher.devices.filter { $0.controllerPortName == port.serviceName }
-        if !byPortName.isEmpty {
-            return byPortName
-        }
-        // No device claims this port via UsbIOPort. Only fall back to bus-index
-        // matching if at least one device exposes a controllerPortName, which
-        // tells us UsbIOPort is supported on this machine and an empty result
-        // is meaningful (no device is on this port). Otherwise UsbIOPort isn't
-        // available and we use the older busIndex heuristic.
-        let anyDeviceHasPortName = deviceWatcher.devices.contains { $0.controllerPortName != nil }
-        if anyDeviceHasPortName {
-            return []
-        }
-        if let portBus = port.busIndex {
-            return deviceWatcher.devices.filter { $0.busIndex == portBus }
-        }
-        return []
-    }
-
-    private func portCarriesUSB(_ port: USBCPort) -> Bool {
-        port.transportsActive.contains { $0 == "USB2" || $0 == "USB3" }
+        port.matchingDevices(from: deviceWatcher.devices)
     }
 }
 
