@@ -107,7 +107,9 @@ if [[ -n "${DEVELOPER_ID}" ]]; then
         "${APP_DIR}"
 else
     echo "==> Ad-hoc signing (no DEVELOPER_ID set)"
-    codesign --force --deep --sign - "${APP_DIR}"
+    codesign --force --deep --sign - \
+        -r "=designated => identifier \"${BUNDLE_ID}\"" \
+        "${APP_DIR}"
 fi
 
 echo "==> Verifying signature"

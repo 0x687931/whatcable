@@ -206,6 +206,9 @@ final class Installer: ObservableObject {
 
         for rawLine in output.split(separator: "\n") {
             let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+            let uncommentedLine = line.hasPrefix("# ")
+                ? String(line.dropFirst(2))
+                : line
             if line.hasPrefix("Identifier=") {
                 identifier = String(line.dropFirst("Identifier=".count))
             } else if line.hasPrefix("TeamIdentifier=") {
@@ -213,8 +216,8 @@ final class Installer: ObservableObject {
                 teamIdentifier = value == "not set" ? nil : value
             } else if line == "Signature=adhoc" {
                 isAdHoc = true
-            } else if line.hasPrefix("designated =>") {
-                requirement = String(line.dropFirst("designated =>".count))
+            } else if uncommentedLine.hasPrefix("designated =>") {
+                requirement = String(uncommentedLine.dropFirst("designated =>".count))
                     .trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }

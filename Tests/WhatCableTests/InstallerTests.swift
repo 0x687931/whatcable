@@ -183,7 +183,7 @@ final class InstallerTests: XCTestCase {
                 Format=app bundle with Mach-O universal (x86_64 arm64)
                 Signature=adhoc
                 TeamIdentifier=not set
-                designated => cdhash H"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                # designated => cdhash H"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 """
             }
             return """
