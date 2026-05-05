@@ -113,4 +113,23 @@ final class RegistryParsingTests: XCTestCase {
         XCTAssertEqual(PDIdentityWatcher.productID(from: dict, metadata: metadata), 0x1234)
         XCTAssertEqual(PDIdentityWatcher.bcdDevice(from: metadata), 0x0100)
     }
+
+    func testPDIdentityWatcherOnlyMapsCCFromTransportFallback() {
+        XCTAssertEqual(
+            PDIdentityWatcher.endpoint(from: ["ComponentName": "CC"]),
+            .unknown
+        )
+        XCTAssertEqual(
+            PDIdentityWatcher.endpoint(from: ["AddressDescription": "CC"]),
+            .unknown
+        )
+        XCTAssertEqual(
+            PDIdentityWatcher.endpoint(from: ["Address Description": "CC"]),
+            .unknown
+        )
+        XCTAssertEqual(
+            PDIdentityWatcher.endpoint(from: ["TransportTypeDescription": "CC"]),
+            .sopPrime
+        )
+    }
 }

@@ -109,19 +109,27 @@ final class PDIdentityWatcher: ObservableObject {
     }
 
     nonisolated static func endpointName(from dict: [String: Any]) -> String {
-        (dict["ComponentName"] as? String)
-            ?? (dict["AddressDescription"] as? String)
-            ?? (dict["Address Description"] as? String)
+        explicitEndpointName(from: dict)
             ?? (dict["TransportTypeDescription"] as? String)
             ?? "Unknown"
     }
 
     nonisolated static func endpoint(from dict: [String: Any]) -> PDIdentity.Endpoint {
-        let name = endpointName(from: dict)
-        if name == "CC" {
+        if let name = explicitEndpointName(from: dict) {
+            return PDIdentity.Endpoint(rawValue: name) ?? .unknown
+        }
+
+        let transportName = dict["TransportTypeDescription"] as? String
+        if transportName == "CC" {
             return .sopPrime
         }
-        return PDIdentity.Endpoint(rawValue: name) ?? .unknown
+        return PDIdentity.Endpoint(rawValue: transportName ?? "Unknown") ?? .unknown
+    }
+
+    private nonisolated static func explicitEndpointName(from dict: [String: Any]) -> String? {
+        (dict["ComponentName"] as? String)
+            ?? (dict["AddressDescription"] as? String)
+            ?? (dict["Address Description"] as? String)
     }
 
     nonisolated static func parentPortIdentity(from dict: [String: Any]) -> (type: Int, number: Int) {
