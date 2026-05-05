@@ -21,6 +21,25 @@ final class RegistryParsingTests: XCTestCase {
         ))
     }
 
+    func testUSBCPortWatcherScansM4MiniFrontPortClass() {
+        XCTAssertTrue(USBCPortWatcher.candidateClasses.contains("IOPort"))
+    }
+
+    func testDiagnosticsRedactsSensitiveFields() {
+        XCTAssertEqual(
+            DiagnosticsReport.redactedPropertyValue(key: "USB Serial Number", value: "ABC123"),
+            "<redacted>"
+        )
+        XCTAssertEqual(
+            DiagnosticsReport.redactedPropertyValue(key: "ConnectionUUID", value: "D9F2B2C6-6B2B"),
+            "<redacted>"
+        )
+        XCTAssertEqual(
+            DiagnosticsReport.redactedPropertyValue(key: "PortDescription", value: "Port-USB-C@6"),
+            "Port-USB-C@6"
+        )
+    }
+
     func testUSBCPortWatcherExtractsBusIndexAcrossControllerNameShapes() {
         XCTAssertEqual(USBCPortWatcher.busIndex(fromRegistryName: "hpm4@3"), 4)
         XCTAssertEqual(USBCPortWatcher.busIndex(fromRegistryName: "atc1"), 1)

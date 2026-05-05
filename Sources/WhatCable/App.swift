@@ -337,6 +337,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(pinItem)
         menu.addItem(.separator())
         menu.addItem(.init(title: "Check for Updates...", action: #selector(menuCheckUpdates), keyEquivalent: ""))
+        menu.addItem(.init(title: "Export Diagnostics...", action: #selector(menuExportDiagnostics), keyEquivalent: ""))
         menu.addItem(.init(title: "About \(AppInfo.name)", action: #selector(menuAbout), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(.init(title: "Quit \(AppInfo.name)", action: #selector(menuQuit), keyEquivalent: "q"))
@@ -388,6 +389,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func menuCheckUpdates() {
         UpdateChecker.shared.check(silent: false)
+    }
+
+    @objc private func menuExportDiagnostics() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        let panel = NSSavePanel()
+        panel.title = "Export Diagnostics"
+        panel.nameFieldStringValue = DiagnosticsReport.fileName()
+        panel.canCreateDirectories = true
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            try DiagnosticsReport.make().write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Could not export diagnostics"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
     }
 
     @objc private func menuQuit() {
